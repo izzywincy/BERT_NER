@@ -1,4 +1,4 @@
-﻿from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 import re
 
 # Load tokenizer and model
@@ -29,11 +29,12 @@ def manual_chunking(ner_results):
     for entity in ner_results:
         word = entity["word"]
         label = entity["entity_group"]  # Use "entity_group" instead of "entity"
+        score = entity["score"] * 100  # Probability of the entity
         start = entity["start"]
         end = entity["end"]
 
         # Append the entity to the results
-        chunks.append({"word": word, "label": label, "start": start, "end": end})
+        chunks.append({"word": word, "label": label, "score": score, "start": start, "end": end})
 
     return chunks
 
@@ -43,6 +44,7 @@ def filter_entities(chunked_results):
     for chunk in chunked_results:
         word = chunk["word"]
         label = chunk["label"]
+        score = chunk["score"]
         if label == "PER" and len(word.split()) < 2:
             continue  # Discard single-word names
         filtered_results.append(chunk)
@@ -1670,4 +1672,4 @@ filtered_results = filter_entities(chunked_results)
 
 # Print final results
 for chunk in filtered_results:
-    print(f"Entity: {chunk['word']}, Label: {chunk['label']}, Start: {chunk['start']}, End: {chunk['end']}\n")
+    print(f"Entity: {chunk['word']}, Label: {chunk['label']}, Probability: {chunk['score']:.2f}%, Start: {chunk['start']}, End: {chunk['end']}\n")
