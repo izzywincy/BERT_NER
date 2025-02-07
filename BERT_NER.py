@@ -1668,6 +1668,9 @@ for chunk in chunks:
 chunked_results = manual_chunking(all_results)
 filtered_results = filter_entities(chunked_results)
 
-# Print final results
-for chunk in filtered_results:
-    print(f"Entity: {chunk['word']}, Label: {chunk['label']}, Probability: {chunk['score']:.2f}%, Start: {chunk['start']}, End: {chunk['end']}\n")
+# Write final results to a text file
+with open("ner_results.txt", "w", encoding="utf-8") as file:
+    for chunk in filtered_results:
+        file.write(f"Entity: {chunk['word']}, Label: {chunk['label']}, Probability: {chunk['score']:.2f}%, Start: {chunk['start']}, End: {chunk['end']}\n")
+
+print("Results saved to ner_results.txt")
