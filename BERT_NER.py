@@ -45,8 +45,6 @@ def filter_entities(chunked_results):
         word = chunk["word"]
         label = chunk["label"]
         score = chunk["score"]
-        if label == "PER" and len(word.split()) < 2:
-            continue  # Discard single-word names
         filtered_results.append(chunk)
     return filtered_results
 
