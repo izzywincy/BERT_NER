@@ -15,7 +15,7 @@ def preprocess_text(text):
     return text.strip()
 
 # Split the text into manageable chunks
-def split_text(text, tokenizer, max_length=512, overlap=100):
+def split_text(text, tokenizer, max_length=512, overlap=50):
     tokens = tokenizer.encode(text, add_special_tokens=False)
     chunks = []
     for i in range(0, len(tokens), max_length - overlap):
@@ -1660,7 +1660,7 @@ SO ORDERED.
 Zalameda, M. Lopez, Rosario, and Marquez, JJ., concur.
 """
 processed_example = preprocess_text(example)
-chunks = split_text(processed_example, tokenizer, overlap=100)
+chunks = split_text(processed_example, tokenizer, overlap=50)
 all_results = []
 for chunk in chunks:
     ner_results = nlp(chunk)
