@@ -1,4 +1,8 @@
 # Alfred tries fine-tuning type shi fine shyt
+
+# THIS FILE CREATES A FINE TUNED MODEL BASED ON CLEANED INPUT (fixed_data.jsonl)
+# THE END OF THIS FILE ALSO TESTS THE FINE TUNED MODEL ON AN INPUTTED SENTENCE
+
 # 📌 Step 1: Import Necessary Libraries
 import json
 import numpy as np

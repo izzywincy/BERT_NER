@@ -1,3 +1,4 @@
+# THIS FILE CLEANS THE RAW DATA (data.jsonl) 
 import json
 
 # File paths
