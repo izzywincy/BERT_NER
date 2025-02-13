@@ -21,10 +21,9 @@ from transformers import (
 # 📌 Step 2: Load Dataset
 dataset = load_dataset("json", data_files={"train": "fixed_data.jsonl"}, split="train")
 
-# 📌 Step 3.1: Load Tokenizer and Model
+# 📌 Step 3.1: Load Tokenizer 
 model_name = "dslim/bert-base-NER"  # Base BERT model
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForTokenClassification.from_pretrained(model_name, num_labels=7, ignore_mismatched_sizes=True) # Adjust based on entity classes
 
 # 📌 Step 3.2: Define label-to-ID mapping
 LABEL_MAP = {
@@ -38,6 +37,18 @@ LABEL_MAP = {
     "PERSON": 7  # Person
 }
 
+# Reverse mapping for model output interpretation
+id2label = {v: k for k, v in LABEL_MAP.items()}  # Converts 0 -> "O", 1 -> "INS", etc.
+label2id = {k: v for k, v in LABEL_MAP.items()}  # Converts "INS" -> 1, etc.
+
+# 📌 Step 3.3: Load Model with Custom Labels
+model = AutoModelForTokenClassification.from_pretrained(
+    model_name, 
+    num_labels=len(LABEL_MAP), 
+    id2label=id2label, 
+    label2id=label2id, 
+    ignore_mismatched_sizes=True
+)
 
 # 📌 Step 4: Tokenize and Align Labels
 import torch
@@ -131,5 +142,13 @@ nlp = pipeline("ner", model="./bert-legal-ner", tokenizer="./bert-legal-ner", ag
 # Input test set
 text = "The Supreme Court ruled on Republic Act No. 3019 on January 15, 2022."
 results = nlp(text)
+
+# Convert numeric labels to actual entity names
+for entity in results:
+    label = entity["entity_group"]  # Extract label
+    if label.startswith("LABEL_"):  # If still in numeric format (e.g., "LABEL_3")
+        entity["entity_group"] = id2label.get(int(label.replace("LABEL_", "")), "O")  # Map it
+    # Otherwise, keep the existing label if it's already mapped
+
 
 print("🔹 NER Output:", results)
