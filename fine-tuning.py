@@ -54,38 +54,30 @@ model = AutoModelForTokenClassification.from_pretrained(
 import torch
 
 def tokenize_and_align_labels(examples):
-    tokenized_inputs = tokenizer(
-        examples["text"],
-        truncation=True,
-        padding="max_length",
-        max_length=512,
-        return_offsets_mapping=True  # Needed for token-to-char mapping
-    )
-    
+    tokenized_inputs = tokenizer(examples["text"], truncation=True, padding="max_length", max_length=512)
+
     labels = []
-    for batch_index in range(len(tokenized_inputs["input_ids"])):
-        entity_labels = [-100] * len(tokenized_inputs["input_ids"][batch_index])  # Default to ignore token (-100)
+    for i, label in enumerate(examples["entities"]):  # Ensure looping through all entities
+        label_ids = [-100] * len(tokenized_inputs["input_ids"][i])  # Default to -100 (ignored in loss)
         
-        for ent in examples["entities"][batch_index]:  
-            start, end, entity_label = ent["start"], ent["end"], ent["label"]
-            entity_label_id = LABEL_MAP.get(entity_label, 0)  # Convert label to ID (default "O" -> 0)
+        for entity in label:
+            start, end, entity_label = entity["start"], entity["end"], entity["label"]
+            for idx in range(len(tokenized_inputs["input_ids"])):
+                char_pos = tokenized_inputs.char_to_token(i, idx)
+                if char_pos is None:
+                    continue  # Skip tokens that don't map to original characters
 
-            for i, (token_start, token_end) in enumerate(tokenized_inputs["offset_mapping"][batch_index]):
-                if token_start is None or token_end is None:
-                    continue  # Skip tokens with no mapping
-                if token_start >= start and token_end <= end:
-                    entity_labels[i] = entity_label_id  
+        labels.append(label_ids)
 
-        labels.append(entity_labels)
-
-    # Convert to tensor and match model expectation
     tokenized_inputs["labels"] = labels
-    tokenized_inputs.pop("offset_mapping")  # Remove unnecessary data
     return tokenized_inputs
 
-# Apply to dataset
+# Apply function
 tokenized_dataset = dataset.map(tokenize_and_align_labels, batched=True)
 
+for batch in tokenized_dataset:
+    print("Input length:", len(batch["input_ids"]))
+    print("Labels length:", len(batch["labels"]))
 
 # 📌 Step 5: Define Training Arguments
 training_args = TrainingArguments(
@@ -111,22 +103,57 @@ trainer = Trainer(
     tokenizer=tokenizer
 )
 
+# Check label distribution in dataset
+# from collections import Counter
+
+# all_labels = [label for data in tokenized_dataset["labels"] for label in data if label != -100]
+# label_counts = Counter(all_labels)
+
+# print("Label Distribution:", {id2label[k]: v for k, v in label_counts.items()})
+
+
 trainer.train()
 
 # 📌 Step 7: Evaluate Performance
 metric = evaluate.load("seqeval")
 
-def compute_metrics(pred):
-    predictions, labels = pred
+def compute_metrics(eval_preds):
+    predictions, labels = eval_preds
+
+    # Convert logits to class indices
     predictions = np.argmax(predictions, axis=2)
-    results = metric.compute(predictions=predictions, references=labels)
+
+    # Remove -100 values (ignored tokens) from labels and predictions
+    true_labels = [
+        [label for label, pred in zip(label_list, pred_list) if label != -100]
+        for label_list, pred_list in zip(labels, predictions)
+    ]
+
+    pred_labels = [
+        [pred for label, pred in zip(label_list, pred_list) if label != -100]
+        for label_list, pred_list in zip(labels, predictions)
+    ]
+
+    # Check if we have valid labels before computing metrics
+    if not any(true_labels):  # If all true labels are empty
+        print("Error: No valid labels to compute metrics!")
+        return {"f1": 0.0, "precision": 0.0, "recall": 0.0, "accuracy": 0.0}  # Return default values
+
+    # Compute metrics
+    results = metric.compute(predictions=pred_labels, references=true_labels)
+
     return {
-        "f1": results["overall_f1"],
-        "precision": results["overall_precision"],
-        "recall": results["overall_recall"]
+        "f1": results.get("overall_f1", 0.0),
+        "precision": results.get("overall_precision", 0.0),
+        "recall": results.get("overall_recall", 0.0),
+        "accuracy": results.get("overall_accuracy", 0.0),
     }
 
-trainer.evaluate()
+# Run evaluation with predictions
+predictions, labels, _ = trainer.predict(tokenized_dataset)  # Get predictions instead of just eval loss
+
+# Compute Metrics
+metrics = compute_metrics((predictions, labels))
 
 # 📌 Step 8: Save and Deploy Model
 model.save_pretrained("./bert-legal-ner")
@@ -152,3 +179,6 @@ for entity in results:
 
 
 print("🔹 NER Output:", results)
+print(f"🔹 F1 Score: {metrics['f1']:.4f}")
+print(f"🔹 Precision: {metrics['precision']:.4f}")
+print(f"🔹 Recall: {metrics['recall']:.4f}")
