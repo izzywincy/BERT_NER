@@ -11,12 +11,28 @@ error_log_folder = "error_logs"  # Folder to save error logs
 os.makedirs(output_folder, exist_ok=True)
 os.makedirs(error_log_folder, exist_ok=True)
 
+# Clear the error logs folder before starting
+for error_file in os.listdir(error_log_folder):
+    error_file_path = os.path.join(error_log_folder, error_file)
+    if os.path.isfile(error_file_path):
+        os.remove(error_file_path)  # Delete the file
+print("🗑️ Error logs were cleared.")
+
+# Get list of already cleaned files 
+cleaned_files = set(os.listdir(output_folder))
+
 # Process each file in the input folder
 for filename in os.listdir(input_folder):
     if filename.endswith(".jsonl"):  # Process only JSONL files
         input_file = os.path.join(input_folder, filename)
         output_file = os.path.join(output_folder, filename)
         error_log_file = os.path.join(error_log_folder, f"{filename}_errors.log")
+
+
+        # Check if file is already cleaned
+        if filename in cleaned_files:
+            print(f"🔁 {filename} is already cleaned. Skipping...")
+            continue
 
         valid_data = []  # Store cleaned data
         errors = []  # Store errors
