@@ -67,30 +67,43 @@ model = AutoModelForTokenClassification.from_pretrained(
 import torch
 
 def tokenize_and_align_labels(examples):
-    tokenized_inputs = tokenizer(examples["text"], truncation=True, padding="max_length", max_length=512)
+    tokenized_inputs = tokenizer(
+        examples["text"], truncation=True, padding="max_length", max_length=512, return_offsets_mapping=True
+    )
 
     labels = []
-    for i, label in enumerate(examples["entities"]):  # Ensure looping through all entities
-        label_ids = [-100] * len(tokenized_inputs["input_ids"][i])  # Default to -100 (ignored in loss)
-        
+    for i, label in enumerate(examples["entities"]):
+        label_ids = [-100] * len(tokenized_inputs["input_ids"][i])  # Default ignored labels
+
         for entity in label:
             start, end, entity_label = entity["start"], entity["end"], entity["label"]
-            for idx in range(len(tokenized_inputs["input_ids"])):
-                char_pos = tokenized_inputs.char_to_token(i, idx)
-                if char_pos is None:
-                    continue  # Skip tokens that don't map to original characters
+
+            if entity_label not in label2id:
+                print(f"⚠️ Warning: Unknown label '{entity_label}' found in dataset. Skipping.")
+                continue  
+
+            # Align labels with tokens
+            for idx, (token_start, token_end) in enumerate(tokenized_inputs["offset_mapping"][i]):
+                if token_start is None or token_end is None:
+                    continue  # Skip special tokens
+                if start <= token_start < end:  
+                    label_ids[idx] = label2id[entity_label]  # Assign correct label
 
         labels.append(label_ids)
 
+    tokenized_inputs.pop("offset_mapping")  # Remove offset mapping (not needed after processing)
     tokenized_inputs["labels"] = labels
     return tokenized_inputs
 
-# Apply function
 tokenized_dataset = dataset.map(tokenize_and_align_labels, batched=True)
 
+
 for batch in tokenized_dataset:
-    print("Input length:", len(batch["input_ids"]))
-    print("Labels length:", len(batch["labels"]))
+    print(f"Input length: {len(batch['input_ids'])}, Labels length: {len(batch['labels'])}")
+
+    if len(batch['input_ids']) != len(batch['labels']):
+        raise ValueError("❌ Mismatch detected between tokenized input and label lengths!")
+
 
 # 📌 Step 5: Define Training Arguments
 training_args = TrainingArguments(
@@ -137,20 +150,26 @@ def compute_metrics(eval_preds):
     predictions = np.argmax(predictions, axis=2)
 
     # Remove -100 values (ignored tokens) from labels and predictions
-    true_labels = [
-        [label for label, pred in zip(label_list, pred_list) if label != -100]
-        for label_list, pred_list in zip(labels, predictions)
-    ]
+    true_labels = []
+    pred_labels = []
 
-    pred_labels = [
-        [pred for label, pred in zip(label_list, pred_list) if label != -100]
-        for label_list, pred_list in zip(labels, predictions)
-    ]
+    for label_list, pred_list in zip(labels, predictions):
+        filtered_labels = []
+        filtered_preds = []
 
-    # Check if we have valid labels before computing metrics
-    if not any(true_labels):  # If all true labels are empty
-        print("Error: No valid labels to compute metrics!")
-        return {"f1": 0.0, "precision": 0.0, "recall": 0.0, "accuracy": 0.0}  # Return default values
+        for label, pred in zip(label_list, pred_list):
+            if label != -100:  # Ignore padding tokens
+                filtered_labels.append(id2label[label])
+                filtered_preds.append(id2label[pred])
+
+        if filtered_labels:  # Ensure empty lists aren't included
+            true_labels.append(filtered_labels)
+            pred_labels.append(filtered_preds)
+
+    # **Check if valid labels exist before computing metrics**
+    if not true_labels:
+        print("❌ Error: No valid labels found for metric computation!")
+        return {"f1": 0.0, "precision": 0.0, "recall": 0.0, "accuracy": 0.0}
 
     # Compute metrics
     results = metric.compute(predictions=pred_labels, references=true_labels)
@@ -180,7 +199,11 @@ tokenizer.save_pretrained("./bert-legal-ner")
 nlp = pipeline("ner", model="./bert-legal-ner", tokenizer="./bert-legal-ner", aggregation_strategy="first")
 
 # Input test set
-text = "Republic Act 9210"
+text = """The Supreme Court ruled in G.R. No. 123456 that Section 5 of Republic Act No. 6713 is constitutional. 
+The decision was promulgated on March 12, 2015. According to Article 7 of the 1987 Constitution, public 
+officials must uphold integrity and accountability. The case involved the Office of the Ombudsman and 
+several government agencies, including the Department of Justice (DOJ) and the Commission on Audit (COA)."""
+
 results = nlp(text)
 
 
