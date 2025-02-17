@@ -1,4 +1,4 @@
-# THIS FILE CLEANS THE RAW DATA (raw_data folder)
+# THIS FILE CLEANS THE RAW DATA (raw_data folder
 import json
 import os
 
@@ -31,33 +31,47 @@ for filename in os.listdir(input_folder):
                         errors.append(f"Line {i+1}: Missing 'text'.")
                         continue
 
-                    # Handle both "label" (single) and "labels" (list)
-                    raw_labels = data.get("labels") or data.get("label")
-                    
-                    if raw_labels is None:
-                        errors.append(f"Line {i+1}: Missing 'labels' or 'label'.")
-                        continue
-
-                    # Ensure raw_labels is a list (convert if necessary)
-                    if isinstance(raw_labels, dict):
-                        errors.append(f"Line {i+1}: Invalid 'labels' format (dictionary found). Expected list.")
-                        continue
-                    elif not isinstance(raw_labels, list):
-                        raw_labels = [raw_labels]  # Convert single label to a list
-
-                    # Convert labels to 'entities' format
                     entities = []
-                    for label in raw_labels:
-                        if not isinstance(label, (list, tuple)) or len(label) != 3:
-                            errors.append(f"Line {i+1}: Invalid label format {label}. Expected [start, end, label].")
-                            continue
-                        start, end, entity_label = label
-                        entities.append({"start": start, "end": end, "label": str(entity_label)})  # Ensure label is a string
+
+                    # Handle first structure: "label": [[start, end, label]]
+                    if "label" in data:
+                        for label in data["label"]:
+                            if not isinstance(label, (list, tuple)) or len(label) != 3:
+                                errors.append(f"Line {i+1}: Invalid label format {label}. Expected [start, end, label].")
+                                continue
+                            start, end, entity_label = label
+                            entities.append({"start": start, "end": end, "label": str(entity_label)})
+
+                    # Handle second structure: "labels": [[start, end, label]]
+                    elif "labels" in data:
+                        for label in data["labels"]:
+                            if not isinstance(label, (list, tuple)) or len(label) != 3:
+                                errors.append(f"Line {i+1}: Invalid label format {label}. Expected [start, end, label].")
+                                continue
+                            start, end, entity_label = label
+                            entities.append({"start": start, "end": end, "label": str(entity_label)})
+
+
+                    # Handle second structure: "entities": [{"id": X, "label": "ENTITY", "start_offset": A, "end_offset": B}]
+                    elif "entities" in data:
+                        for entity in data["entities"]:
+                            if not isinstance(entity, dict) or not all(k in entity for k in ["start_offset", "end_offset", "label"]):
+                                errors.append(f"Line {i+1}: Invalid entity format {entity}. Expected dictionary with 'start_offset', 'end_offset', and 'label'.")
+                                continue
+                            entities.append({
+                                "start": entity["start_offset"],
+                                "end": entity["end_offset"],
+                                "label": str(entity["label"])
+                            })
+
+                    else:
+                        errors.append(f"Line {i+1}: No 'labels' or 'entities' field found.")
+                        continue
 
                     # Store new JSON structure
                     fixed_entry = {
                         "text": data["text"],
-                        "entities": entities  # Replacing 'labels' or 'label' with formatted 'entities'
+                        "entities": entities  # Standardized format
                     }
                     valid_data.append(fixed_entry)
 
