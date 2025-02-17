@@ -4,6 +4,7 @@
 # THE END OF THIS FILE ALSO TESTS THE FINE TUNED MODEL ON AN INPUTTED SENTENCE
 
 # 📌 Step 1: Import Necessary Libraries
+import os 
 import json
 import numpy as np
 import datasets
@@ -18,8 +19,20 @@ from transformers import (
     pipeline
 )
 
-# 📌 Step 2: Load Dataset
-dataset = load_dataset("json", data_files={"train": "fixed_data.jsonl"}, split="train")
+
+
+# 📌 Step 2: Load Multiple Datasets
+
+data_folder = "cleaned_data/"
+
+dataset_files = [os.path.join(data_folder, file) for file in os.listdir(data_folder) if file.endswith(".jsonl")]
+
+# Print to verify loaded files
+print("✅ Found dataset files:", dataset_files)
+
+# Load datasets
+dataset = load_dataset("json", data_files={"train": dataset_files}, split="train")
+
 
 # 📌 Step 3.1: Load Tokenizer 
 model_name = "dslim/bert-base-NER"  # Base BERT model
@@ -167,7 +180,7 @@ tokenizer.save_pretrained("./bert-legal-ner")
 nlp = pipeline("ner", model="./bert-legal-ner", tokenizer="./bert-legal-ner", aggregation_strategy="first")
 
 # Input test set
-text = "Also, Sec. 11 of RA 3019 was similarly amended by Sec. 15, Art. XI of the 1987 Constitution with respect to imprescriptibility of offenses related to ill-gotten wealth.\nNonetheless, granting that the offense committed by respondents is not imprescriptible, the reckoning point shall not be from the execution of the MOA on November 20, 1974, but from the EDSA Revolution in February 1986. The Republic, citing Sec. 2 of Act No. 3326,which provides that \"prescription shall begin to run from the day of the commission of the violation of law, and if the same be not known at the time, from the discovery thereof and the institution of judicial proceedings,\" argues that the reckoning point of the prescriptive period must be from the discovery of the alleged violation,\u00a0i.e., at the time of the EDSA Revolution in February 1986 and not from the execution of the MOA on November 20, 1974.\nRepublic explains that the acts complained of were committed during the Marcos regime by persons closely associated with President Marcos, which means that no one could have known the existence of the said MOA dated November 20, 1974 except respondents themselves. Even assuming that third parties knew of the existence of the subject MOA, no one had the reasonable opportunity nor political will to prosecute respondents or the persons involved therein. Considering the peculiar circumstances at that time, the prescriptive period should be reckoned from the discovery of the offense,\u00a0i.e., immediately after the EDSA Revolution in February 1986."
+text = "Republic Act 9210"
 results = nlp(text)
 
 
@@ -182,7 +195,7 @@ for entity in results:
 # Assuming 'results' contains the NER output
 print("◆ NER Output:")
 for entity in results:
-    print(f"{entity['word']} -> {entity['entity_group']}")
+    print(f"{entity['word']} : {entity['entity_group']}")
 print(f"🔹 F1 Score: {metrics['f1']:.4f}")
 print(f"🔹 Precision: {metrics['precision']:.4f}")
 print(f"🔹 Recall: {metrics['recall']:.4f}")
