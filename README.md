@@ -27,4 +27,6 @@ pip install transformers torch numpy json datasets
 4. Save and deploy the trained model
 
 # Running
-python fine-tuning.py
+1. Upload annotated data (.jsonl) in /raw_data
+2. Run `python cleaning-data.py` to start data clenaning
+3. Run  `python fine-tuning.py` to train the cleaned dataset
