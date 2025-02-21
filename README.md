@@ -16,7 +16,7 @@ The model recognizes the following entities:
 | PERSON |    Person (e.g., Juan Dela Cruz) |
 
 # Setup
-pip install transformers torch numpy json datasets
+pip install transformers torch numpy seqeval datasets
 
 # Training 
 1. Load and preprocess the dataset
