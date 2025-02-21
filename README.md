@@ -16,7 +16,14 @@ The model recognizes the following entities:
 | PERSON |    Person (e.g., Juan Dela Cruz) |
 
 # Setup
-pip install transformers torch numpy seqeval datasets evaluate
+NOTE: It is recommended to create a Python environment to make the setup seamless.
+## Python Environment Setup
+### For VSCode:
+1. Open the Command Palette (Crtl+Shift+P)
+2. Search for the `Python: Create Environment Command`
+## Dependencies Installation
+Run the following command:
+`pip install transformers[torch] numpy seqeval datasets evaluate`
 
 # Training 
 1. Load and preprocess the dataset
