@@ -120,7 +120,7 @@ training_args = TrainingArguments(
     evaluation_strategy="epoch",
     save_strategy="epoch",
     logging_dir="./logs",
-    num_train_epochs=1,  # Adjust based on dataset size
+    num_train_epochs=5,  # Adjust based on dataset size
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
     warmup_steps=500,
@@ -181,7 +181,7 @@ nlp = pipeline("ner", model="./bert-legal-ner", tokenizer="./bert-legal-ner", ag
 
 # Input test set
 text = """
-    Before the Court is a petition for review on certiorari1 assailing the Amended Decision2 dated January 8, 2010 and the Resolution3 dated August 3, 2010 of the Court of Appeals (CA) in CA-G.R. CV No. 82888, which: (a) reversed and set aside its earlier Decision4 dated July 6, 2009, dismissing Land Registration (LRC) Case No. TG-898 without prejudice; and (b) affirmed the Decision5 dated April 1, 2003 of the Regional Trial Court of Tagaytay City, Branch 18 (RTC), approving respondent Banal na Pag-aaral, Phil., Inc.'s (respondent) application for registration.
+    Before the Court is a petition for review on certiorari assailing the Amended Decision dated January 8, 2010 and the Resolution dated August 3, 2010 of the Court of Appeals (CA) in CA-G.R. CV No. 82888, which: (a) reversed and set aside its earlier Decision dated July 6, 2009, dismissing Land Registration (LRC) Case No. TG-898 without prejudice; and (b) affirmed the Decision dated April 1, 2003 of the Regional Trial Court of Tagaytay City, Branch 18 (RTC), approving respondent Banal na Pag-aaral, Phil., Inc.'s (respondent) application for registration.
 """
 results = nlp(text)
 
