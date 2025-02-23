@@ -30,11 +30,23 @@ def tokenize_with_offsets(text):
 # Function to convert JSONL annotations to IOB format
 def jsonl_to_iob(data):
     text = data["text"]
-    labels = data.get("label", []) or data.get("labels", [])
     tokens, token_offsets = tokenize_with_offsets(text)
     iob_tags = ['O'] * len(tokens)
-    
-    # Assign IOB tags based on labels
+
+    # Extract labels from different possible formats
+    labels = []
+    if "label" in data:
+        labels = data["label"]
+    elif "labels" in data:
+        labels = data["labels"]
+    elif "entities" in data:
+        # Convert `entities` format to standard [(start, end, label)]
+        for entity in data["entities"]:
+            if not all(k in entity for k in ["start_offset", "end_offset", "label"]):
+                continue  # Skip malformed entities
+            labels.append([entity["start_offset"], entity["end_offset"], entity["label"]])
+
+    # Assign IOB tags based on extracted labels
     for start_offset, end_offset, label in labels:
         for i, (token_start, token_end) in enumerate(token_offsets):
             if token_start >= start_offset and token_end <= end_offset:
@@ -42,7 +54,7 @@ def jsonl_to_iob(data):
                     iob_tags[i] = f'B-{label}'
                 else:
                     iob_tags[i] = f'I-{label}'
-    
+
     # Combine tokens and IOB tags
     iob_lines = [f"{token}\t{tag}" for token, tag in zip(tokens, iob_tags)]
     return iob_lines
@@ -65,16 +77,21 @@ for filename in os.listdir(input_folder):
                     if "text" not in data:
                         errors.append(f"Line {i+1}: Missing 'text'.")
                         continue
-                    
+
                     # Extract labels from different possible formats
+                    labels = []
                     if "label" in data:
                         labels = data["label"]
                     elif "labels" in data:
                         labels = data["labels"]
-                    else:
-                        errors.append(f"Line {i+1}: No 'labels' field found.")
-                        continue
-                    
+                    elif "entities" in data:
+                        labels = []
+                        for entity in data["entities"]:
+                            if not isinstance(entity, dict) or not all(k in entity for k in ["start_offset", "end_offset", "label"]):
+                                errors.append(f"Line {i+1}: Invalid entity format {entity}. Expected dictionary with 'start_offset', 'end_offset', and 'label'.")
+                                continue
+                            labels.append([entity["start_offset"], entity["end_offset"], entity["label"]])
+
                     # Validate labels
                     for label in labels:
                         if not isinstance(label, (list, tuple)) or len(label) != 3:
