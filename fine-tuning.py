@@ -154,7 +154,7 @@ training_args = TrainingArguments(
     num_train_epochs=30,  # Increase since dataset is small
     per_device_train_batch_size=2,  # Reduce batch size for better updates
     per_device_eval_batch_size=2,
-    warmup_steps=25,  # Reduce significantly
+    warmup_steps=0,  # Reduce significantly
     weight_decay=0.01,
     logging_steps=2,  # More frequent logging
     report_to="none"
@@ -303,6 +303,11 @@ for entity in results:
     if label.startswith("LABEL_"):  # If still in numeric format (e.g., "LABEL_3")
         entity["entity_group"] = id2label.get(int(label.replace("LABEL_", "")), "O")  # Map it
 
+print("\n◆ Debugging Low Confidence Predictions:")
+for entity in results:
+    print(f"{entity['word']} → {entity['entity_group']} (Score: {entity['score']:.4f})")
+
+
 # Print NER Output
 print("◆ NER Output:")
 for entity in results:
@@ -312,4 +317,4 @@ print(f"🔹 Precision: {metrics['precision']:.4f}")
 print(f"🔹 Recall: {metrics['recall']:.4f}")
 
 exists = any(test_text in " ".join(tokens) for tokens in all_tokens)
-print(f"\n🔍 Does the test sentence exist in training data? {'✅ YES' if exists else '❌ NO'}") #Overfitting | Yes
+print(f"\n🔍 Does the test sentence exist in training data? {'✅ YES' if exists else '❌ NO'}") # Overfitting Check
