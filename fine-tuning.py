@@ -175,6 +175,7 @@ trainer.train()
 # 📌 Step 7: Evaluate Performance
 metric = evaluate.load("seqeval")
 
+#TODO: Metrics might be inaccurate
 def compute_metrics(eval_preds):
     predictions, labels = eval_preds
     predictions = np.argmax(predictions, axis=2)
