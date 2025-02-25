@@ -58,6 +58,30 @@ for file_path in dataset_files:
 dataset = Dataset.from_dict({"tokens": all_tokens, "ner_tags": all_labels})
 print(f"✅ Loaded {len(dataset)} sentences from IOB files.")
 
+# debug: check if dataset is balanced
+# 
+# from collections import Counter
+# 
+# # Flatten all labels to count their distribution
+# flat_labels = [label for sublist in all_labels for label in sublist]
+# label_counts = Counter(flat_labels)
+# 
+# # Print label distribution
+# print("\n🔍 Training Label Distribution:")
+# for label, count in label_counts.items():
+#     print(f"{label}: {count}")
+# 
+# # Check if "O" is overwhelmingly dominant
+# if label_counts.get("O", 0) > 0.95 * sum(label_counts.values()):
+#     print("⚠️ WARNING: More than 95% of labels are 'O'. The model may not learn named entities properly.")
+#     #Fix:
+#     # Increase dataset size (more annotated data).
+#     # Oversample underrepresented labels by adding duplicate samples of "B-RA", "B-INS", etc.
+#     # Reduce "O" labels if possible.
+#     
+# Comment: Most are O.
+
+
 # 📌 Step 3.1: Load Tokenizer
 model_name = "dslim/bert-base-NER"  # Base BERT model
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -98,6 +122,11 @@ def tokenize_and_align_labels(examples):
         examples["tokens"], truncation=True, padding="max_length", max_length=512, is_split_into_words=True
     )
     labels = []
+    # debug: check if tokens are misaligned
+    # for i, word in enumerate(examples["tokens"]):
+    #     print(f"🔹 Token: {word} → Label: {examples['ner_tags'][i]}")
+    # Comment: Aligned
+
     for i, label in enumerate(examples["ner_tags"]):
         word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their corresponding word
         label_ids = [-100] * len(word_ids)  # Default ignored labels
@@ -117,17 +146,20 @@ tokenized_dataset = dataset.map(tokenize_and_align_labels, batched=True)
 # 📌 Step 5: Define Training Arguments
 training_args = TrainingArguments(
     output_dir="./bert-legal-ner",
-    evaluation_strategy="epoch",
-    save_strategy="epoch",
+    evaluation_strategy="steps",  # Evaluate more frequently
+    eval_steps=5,  # Adjust based on dataset size
+    save_strategy="steps",  # Save more frequently
+    save_steps=5,  # Save more often due to small dataset
     logging_dir="./logs",
-    num_train_epochs=5,  # Adjust based on dataset size
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
-    warmup_steps=500,
+    num_train_epochs=30,  # Increase since dataset is small
+    per_device_train_batch_size=2,  # Reduce batch size for better updates
+    per_device_eval_batch_size=2,
+    warmup_steps=25,  # Reduce significantly
     weight_decay=0.01,
-    logging_steps=10,
+    logging_steps=2,  # More frequent logging
     report_to="none"
 )
+
 
 # 📌 Step 6: Fine-Tune the Model
 trainer = Trainer(
@@ -177,13 +209,14 @@ model.save_pretrained("./bert-legal-ner")
 tokenizer.save_pretrained("./bert-legal-ner")
 
 # 📌 Step 9: Test the Fine-Tuned Model with a Test Set
-nlp = pipeline("ner", model="./bert-legal-ner", tokenizer="./bert-legal-ner", aggregation_strategy="first")
+nlp = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="first")
 
 # Input test set
-text = """
-    Before the Court is a petition for review on certiorari assailing the Amended Decision dated January 8, 2010 and the Resolution dated August 3, 2010 of the Court of Appeals (CA) in CA-G.R. CV No. 82888, which: (a) reversed and set aside its earlier Decision dated July 6, 2009, dismissing Land Registration (LRC) Case No. TG-898 without prejudice; and (b) affirmed the Decision dated April 1, 2003 of the Regional Trial Court of Tagaytay City, Branch 18 (RTC), approving respondent Banal na Pag-aaral, Phil., Inc.'s (respondent) application for registration.
-"""
-results = nlp(text)
+#text = """
+#    Before the Court is a petition for review on certiorari assailing the Amended Decision dated January 8, 2010 and the Resolution dated August 3, 2010 of the Court of Appeals (CA) in CA-G.R. CV No. 82888, which: (a) reversed and set aside its earlier Decision dated July 6, 2009, dismissing Land Registration (LRC) Case No. TG-898 without prejudice; and (b) affirmed the Decision dated April 1, 2003 of the Regional Trial Court of Tagaytay City, Branch 18 (RTC), approving respondent Banal na Pag-aaral, Phil., Inc.'s (respondent) application for registration.
+#"""
+test_text = "The Supreme Court ruled under Republic Act No. 3019."
+results = nlp(test_text)
 
 # Convert numeric labels to actual entity names
 for entity in results:
@@ -198,3 +231,6 @@ for entity in results:
 print(f"🔹 F1 Score: {metrics['f1']:.4f}")
 print(f"🔹 Precision: {metrics['precision']:.4f}")
 print(f"🔹 Recall: {metrics['recall']:.4f}")
+
+exists = any(test_text in " ".join(tokens) for tokens in all_tokens)
+print(f"\n🔍 Does the test sentence exist in training data? {'✅ YES' if exists else '❌ NO'}") #Overfitting | Yes
