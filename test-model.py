@@ -128,21 +128,42 @@ predictions = torch.argmax(logits, dim=2)
 # Print raw logits for debugging
 print("\n🔍 Logits (first 5 tokens):", logits[0][:5])  # Show first 5 token logits
 
-# ------------------ Step 4: Convert Predictions Back to Labels ------------------
-id2label = model.config.id2label  # Use the model's stored label map
 
+def clean_ner_output(tokens, labels):
+    """Merges WordPiece subwords and aligns their predicted labels."""
+    cleaned_tokens = []
+    cleaned_labels = []
+    
+    current_token = ""
+    current_label = "O"
+
+    for token, label in zip(tokens, labels):
+        if token.startswith("##"):  # Merge subwords with previous token
+            current_token += token.replace("##", "")
+        else:
+            if current_token:  # Save previous merged token and its label
+                cleaned_tokens.append(current_token)
+                cleaned_labels.append(current_label)
+            current_token = token  # Start a new token
+            current_label = label  # Assign the label
+
+    # Append the last token if it exists
+    if current_token:
+        cleaned_tokens.append(current_token)
+        cleaned_labels.append(current_label)
+
+    return cleaned_tokens, cleaned_labels
+
+
+# Convert predictions to labels
+id2label = model.config.id2label
 tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
 predicted_labels = [id2label[p.item()] for p in predictions[0]]
 
-# Print results
-print("\n🔹 Sentence: ", test_texts[0])
-print("🔹 Predictions:")
-for token, label in zip(tokens, predicted_labels):
-    print(f"{token}: {label}")
+# Apply cleaning to merge subword tokens
+cleaned_tokens, cleaned_labels = clean_ner_output(tokens, predicted_labels)
 
-# ------------------ Step 5: Debugging - If Model Predicts Only "O" ------------------
-if all(label == "O" for label in predicted_labels):
-    print("\n⚠️ WARNING: Model is predicting 'O' for all tokens. Possible causes:")
-    print("- Dataset might be imbalanced (check label distribution).")
-    print("- Model might not have trained properly (increase epochs, reduce warmup_steps).")
-    print("- Logits might be too close to zero (model is not confident in predictions).")
+# Print cleaned results
+print("\n🔹 Cleaned NER Output:")
+for token, label in zip(cleaned_tokens, cleaned_labels):
+    print(f"{token}: {label}")
