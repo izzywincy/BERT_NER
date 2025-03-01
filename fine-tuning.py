@@ -73,25 +73,41 @@ model = AutoModelForTokenClassification.from_pretrained(
 )
 
 # 📌 Step 6: Tokenization & Label Alignment
-
 def tokenize_and_align_labels(examples):
     tokenized_inputs = tokenizer(
         examples["tokens"], truncation=True, padding="max_length", max_length=512, is_split_into_words=True
     )
     labels = []
+
     for i, label in enumerate(examples["ner_tags"]):
-        word_ids = tokenized_inputs.word_ids(batch_index=i)
-        label_ids = [-100] * len(word_ids)
+        word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to words
+        label_ids = [-100] * len(word_ids)  # Default ignored labels
+
         previous_word_idx = None
-        for word_idx in word_ids:
-            if word_idx is None:
+        for j, word_idx in enumerate(word_ids):
+            if word_idx is None:  # Ignore special tokens ([CLS], [SEP])
                 continue
-            if word_idx != previous_word_idx:
-                label_ids[word_idx] = label2id[label[word_idx]]
+            if word_idx != previous_word_idx:  # First token of a word
+                label_ids[j] = label2id[label[word_idx]]
+            else:  # Apply "I-ENTITY" to all subwords
+                if label[word_idx].startswith("B-"):
+                    label_ids[j] = label2id[label[word_idx].replace("B-", "I-")]
+                else:
+                    label_ids[j] = label2id[label[word_idx]]
             previous_word_idx = word_idx
+
         labels.append(label_ids)
+
     tokenized_inputs["labels"] = labels
     return tokenized_inputs
+# Debug
+print("\n📝 Sentence:", " ".join(train_texts[0]))
+tokenized_output = tokenizer(train_texts[0], is_split_into_words=True)
+tokens = tokenizer.convert_ids_to_tokens(tokenized_output["input_ids"])
+word_ids = tokenized_output.word_ids()
+print("Tokens:", tokens)
+print("Word IDs:", word_ids)
+
 
 train_dataset = train_dataset.map(tokenize_and_align_labels, batched=True)
 val_dataset = val_dataset.map(tokenize_and_align_labels, batched=True)
