@@ -130,7 +130,7 @@ print("\n🔍 Logits (first 5 tokens):", logits[0][:5])  # Show first 5 token lo
 
 
 def clean_ner_output(tokens, labels):
-    """Merges WordPiece subwords and aligns their predicted labels."""
+    """Cleans and aligns NER output, merging subwords and fixing entity misalignment."""
     cleaned_tokens = []
     cleaned_labels = []
     
@@ -138,22 +138,43 @@ def clean_ner_output(tokens, labels):
     current_label = "O"
 
     for token, label in zip(tokens, labels):
+        if token in ["[CLS]", "[SEP]"]:  # Ignore special tokens
+            continue
+
         if token.startswith("##"):  # Merge subwords with previous token
             current_token += token.replace("##", "")
         else:
             if current_token:  # Save previous merged token and its label
                 cleaned_tokens.append(current_token)
                 cleaned_labels.append(current_label)
-            current_token = token  # Start a new token
-            current_label = label  # Assign the label
+            
+            current_token = token  # Start new token
+            current_label = label  # Assign label
 
-    # Append the last token if it exists
     if current_token:
         cleaned_tokens.append(current_token)
         cleaned_labels.append(current_label)
 
-    return cleaned_tokens, cleaned_labels
+    # Post-processing: Ensure `I-ENTITY` doesn't start a new entity
+    for i in range(1, len(cleaned_labels)):
+        if cleaned_labels[i].startswith("I-") and (
+            cleaned_labels[i - 1] == "O" or cleaned_labels[i - 1][2:] != cleaned_labels[i][2:]
+        ):
+            cleaned_labels[i] = cleaned_labels[i].replace("I-", "B-")  # Convert to `B-ENTITY`
 
+    # Fix names with initials (e.g., "MICHAEL G. AGUINALDO")
+    for i in range(len(cleaned_labels) - 1):
+        if cleaned_tokens[i].isupper() and len(cleaned_tokens[i]) == 1 and cleaned_labels[i] == "O":
+            cleaned_labels[i] = "I-PERSON"  # Convert lone initials to `I-PERSON`
+        if cleaned_tokens[i].istitle() and cleaned_labels[i] == "O":  
+            cleaned_labels[i] = "B-PERSON"  # Convert capitalized words to `B-PERSON` if missing
+
+    # Ensure punctuation (.,) does not get entity labels
+    for i in range(len(cleaned_labels)):
+        if cleaned_tokens[i] in [".", ",", ";", ":", "(", ")"]:
+            cleaned_labels[i] = "O"
+
+    return cleaned_tokens, cleaned_labels
 
 # Convert predictions to labels
 id2label = model.config.id2label
