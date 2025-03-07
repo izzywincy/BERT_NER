@@ -141,6 +141,14 @@ for filename in files:
                 for error in errors:
                     file.write(error + "\n")
 
+        # Count total cleaned data 
+        total_cleaned_count = 0
+
+        for cleaned_file in os.listdir("cleaned_data"):
+            total_cleaned_count = total_cleaned_count + 1
+
+        print(total_cleaned_count)
+
         # Summary for this file
         print("--------------------------------------------------\n")        
         print(f"📊 Summary for {filename}:")
@@ -148,4 +156,8 @@ for filename in files:
         print(f"   - Successful Conversions: {len(valid_entries)}")
         print(f"   - Errors Found: {total_errors}")
         print(f"✅ Finished processing {filename}")
+        print("--------------------------------------------------\n")
+
+        # Summary for cleaned_data folder
+        print(f"📊 Total Cleaned Data: {total_cleaned_count}")
         print("--------------------------------------------------\n")
