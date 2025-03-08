@@ -23,7 +23,7 @@ NOTE: It is recommended to create a Python environment to make the setup seamles
 2. Search for the `Python: Create Environment Command`
 ## Dependencies Installation
 Run the following command:
-`pip install transformers[torch] numpy seqeval datasets evaluate`
+`pip install transformers torch numpy seqeval datasets evaluate`
 
 # Training 
 1. Load and preprocess the dataset
