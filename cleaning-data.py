@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 # Define input and output folders
 input_folder = "raw_data"  # Folder containing raw JSONL files
@@ -19,12 +20,15 @@ print("🗑️ Cleared error logs before starting data cleaning.")
 
 # Function to tokenize text and calculate token offsets
 def tokenize_with_offsets(text):
-    tokens = text.split()  # Simple whitespace tokenizer
+    tokens = re.findall(r"\w+|[^\w\s]", text)  # Splits words and punctuation separately
     token_offsets = []
     start = 0
+
     for token in tokens:
+        start = text.find(token, start)  # Find token's exact start position
         token_offsets.append((start, start + len(token)))
-        start += len(token) + 1  # Account for space
+        start += len(token)  # Move start index forward
+
     return tokens, token_offsets
 
 # Function to convert JSONL annotations to IOB format
@@ -142,12 +146,7 @@ for filename in files:
                     file.write(error + "\n")
 
         # Count total cleaned data 
-        total_cleaned_count = 0
-
-        for cleaned_file in os.listdir("cleaned_data"):
-            total_cleaned_count = total_cleaned_count + 1
-
-        print(total_cleaned_count)
+        total_cleaned_count = len(os.listdir(output_folder))
 
         # Summary for this file
         print("--------------------------------------------------\n")        
