@@ -116,15 +116,16 @@ val_dataset = val_dataset.map(tokenize_and_align_labels, batched=True)
 
 training_args = TrainingArguments(
     output_dir="./bert-legal-ner",
-    save_steps=500,  # Save checkpoints less frequently
-    save_total_limit=2,  # Keep only the 2 most recent checkpoints
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
-    num_train_epochs=3,
+    num_train_epochs=20,  # Increase to 15-20
+    learning_rate=3e-5,  # Slight increase on learning rate
+    weight_decay=0.01,
     logging_steps=100,
     evaluation_strategy="steps",
-    save_strategy="epoch",  # Save only at the end of each epoch
+    save_strategy="epoch",
 )
+
 
 
 # 📌 Step 8: Train Model
