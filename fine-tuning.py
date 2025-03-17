@@ -18,7 +18,7 @@ from transformers import (
 
 data_folder = "cleaned_data/"
 dataset_files = [os.path.join(data_folder, file) for file in os.listdir(data_folder) if file.endswith(".iob")]
-
+file_count = len(dataset_files)
 def parse_iob_file(file_path):
     tokens, labels = [], []
     with open(file_path, "r", encoding="utf-8") as f:
@@ -116,19 +116,16 @@ val_dataset = val_dataset.map(tokenize_and_align_labels, batched=True)
 
 training_args = TrainingArguments(
     output_dir="./bert-legal-ner",
+    save_steps=500,  # Save checkpoints less frequently
+    save_total_limit=2,  # Keep only the 2 most recent checkpoints
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
+    num_train_epochs=3,
+    logging_steps=100,
     evaluation_strategy="steps",
-    eval_steps=5,
-    save_strategy="steps",
-    save_steps=5,
-    logging_dir="./logs",
-    num_train_epochs=30,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
-    warmup_steps=0,
-    weight_decay=0.01,
-    logging_steps=2,
-    report_to="none"
+    save_strategy="epoch",  # Save only at the end of each epoch
 )
+
 
 # 📌 Step 8: Train Model
 trainer = Trainer(
@@ -161,7 +158,7 @@ def compute_metrics(eval_preds):
 
 predictions, labels, _ = trainer.predict(val_dataset)
 metrics = compute_metrics((predictions, labels))
-
+print(f"Documents trained: {file_count}")
 print(f"🔹 F1 Score: {metrics['overall_f1']:.4f}")
 print(f"🔹 Precision: {metrics['overall_precision']:.4f}")
 print(f"🔹 Recall: {metrics['overall_recall']:.4f}")
