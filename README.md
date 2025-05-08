@@ -37,3 +37,8 @@ Run the following command:
 1. Upload annotated data (.jsonl) in /raw_data
 2. Run `python cleaning-data.py` to start data clenaning
 3. Run  `python fine-tuning.py` to train the cleaned dataset
+
+# Tallying Dataset (Optional)
+1. Run `count.py` to start tallying a folder
+2. Provide the correct folder name
+3. A tally of each document's classifications is generated as well as the folder's summary.
