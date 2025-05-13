@@ -6,6 +6,7 @@ import torch
 from datasets import Dataset, load_dataset
 import evaluate
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from transformers import (
     AutoTokenizer,
     AutoModelForTokenClassification,
@@ -167,3 +168,52 @@ print(f"🔹 Recall: {metrics['overall_recall']:.4f}")
 # 📌 Step 10: Save Model
 model.save_pretrained("./bert-legal-ner")
 tokenizer.save_pretrained("./bert-legal-ner")
+
+# 📌 Step 11: Multiclass Confusion Matrix (7x7)
+
+# Recompute predictions for confusion matrix
+predictions, labels, _ = trainer.predict(val_dataset)
+predictions = np.argmax(predictions, axis=2)
+
+# Reconstruct predicted and true label strings
+pred_labels, true_labels = [], []
+for label_list, pred_list in zip(labels, predictions):
+    filtered_labels, filtered_preds = [], []
+    for label, pred in zip(label_list, pred_list):
+        if label != -100:
+            filtered_labels.append(id2label[label])
+            filtered_preds.append(id2label[pred])
+    if filtered_labels:
+        true_labels.append(filtered_labels)
+        pred_labels.append(filtered_preds)
+
+
+# Define only the 7 core classes (excluding "O", I- prefixes)
+main_labels = ["INS", "CNS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON"]
+
+# Helper to reduce B- and I- tags to main category
+def simplify_label(tag):
+    if tag == "O":
+        return "O"
+    return tag.split("-")[-1]
+
+# Flatten true and predicted labels
+y_true, y_pred = [], []
+for true_seq, pred_seq in zip(true_labels, pred_labels):
+    for true_tag, pred_tag in zip(true_seq, pred_seq):
+        t = simplify_label(true_tag)
+        p = simplify_label(pred_tag)
+        if t in main_labels:  # Ignore "O" or others
+            y_true.append(t)
+            y_pred.append(p)
+
+# Compute confusion matrix
+cm = confusion_matrix(y_true, y_pred, labels=main_labels)
+
+# Print as formatted table
+print("\n📊 Confusion Matrix (7x7):")
+header = f"{'':>12}" + "".join(f"{label:>12}" for label in main_labels)
+print(header)
+for i, row in enumerate(cm):
+    row_str = f"{main_labels[i]:>12}" + "".join(f"{val:12d}" for val in row)
+    print(row_str)
