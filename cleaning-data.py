@@ -4,7 +4,7 @@ import re
 
 # Define input and output folders
 input_folder = "raw_data"  # Folder containing raw JSONL files
-output_folder = "cleaned_data"  # Folder to save cleaned IOB files
+output_folder = "train_data/train"  # Folder to save cleaned IOB files
 error_log_folder = "error_logs"  # Folder to save error logs
 
 # Ensure output directories exist

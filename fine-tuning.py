@@ -17,7 +17,7 @@ from transformers import (
 
 # 📌 Step 1: Load IOB Files
 
-data_folder = "cleaned_data/"
+data_folder = "train_data/train"
 dataset_files = [os.path.join(data_folder, file) for file in os.listdir(data_folder) if file.endswith(".iob")]
 file_count = len(dataset_files)
 def parse_iob_file(file_path):

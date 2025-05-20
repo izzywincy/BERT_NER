@@ -34,7 +34,7 @@ def load_iob_file(file_path):
             labels.append(label_list)
     return tokens, labels
 
-test_folder = "./test_data"  # Change to the actual test set folder
+test_folder = "./train_data/test"  # Change to the actual test set folder
 test_files = [os.path.join(test_folder, f) for f in os.listdir(test_folder) if f.endswith(".iob")]
 
 id2label = model.config.id2label
