@@ -2,6 +2,7 @@ import os
 
 def count_in_file(file_path):
     # init counters
+
     counters = {
         'case_nums': 0,
         'persons': 0,
@@ -44,6 +45,7 @@ def count_in_file(file_path):
     return counters
 
 def tally_folder(folder_path):
+    file_count = 0
     file_total = {}
     combined_totals = {
         'case_nums': 0,
@@ -56,6 +58,9 @@ def tally_folder(folder_path):
     }
 
     for filename in os.listdir(folder_path):
+
+        file_count +=1
+
         if filename.endswith('.iob'): 
             file_path = os.path.join(folder_path, filename)
             counts = count_in_file(file_path)
@@ -65,7 +70,7 @@ def tally_folder(folder_path):
         for key in combined_totals:
             combined_totals[key] += counts.get(key, 0)
 
-    return file_total, combined_totals
+    return file_total, combined_totals, file_count
 
 # main
 if __name__ == "__main__":
@@ -78,7 +83,7 @@ if __name__ == "__main__":
             continue
 
         print("Folder exists! Checking now...\n")
-        result, summary = tally_folder(folder)
+        result, summary, totalfiles = tally_folder(folder)
 
         # print results per file
         for file, counts in result.items():
@@ -91,3 +96,4 @@ if __name__ == "__main__":
         print(f"\"{folder}\" Summary:")
         for entity, count in summary.items():
             print(f" {entity}: {count}")  
+        print(f"\nNum of Files tallied: {totalfiles}")
