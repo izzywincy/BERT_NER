@@ -48,25 +48,26 @@ def split_files(files_counts, ratios):
         'test': total_files - int(ratios['train'] * total_files) - int(ratios['eval'] * total_files)
     }
 
-    # Force-distribute CNS-tagged files first
+    # ✅ Separate CNS-tagged files
     cns_files = [(f, c) for f, c in files_counts if c['constitutes'] > 0]
-    files_counts = [(f, c) for f, c in files_counts if c['constitutes'] == 0]
+    non_cns_files = [(f, c) for f, c in files_counts if c['constitutes'] == 0]
 
+    # ✅ Put 90% of CNS files in train, 10% in eval
+    cns_train_count = int(0.9 * len(cns_files))
     for i, (filename, counts) in enumerate(cns_files):
-        split = ['train', 'eval', 'test'][i % 3]
+        split = 'train' if i < cns_train_count else 'eval'
         split_files[split].append(filename)
         for k in ENTITY_KEYS:
             split_counts[split][k] += counts[k]
 
-    for filename, counts in files_counts:
+    # 🔄 Distribute remaining files with balance logic
+    for filename, counts in non_cns_files:
         best_split = None
         min_entity_sum = float('inf')
 
         for split in ['train', 'eval', 'test']:
             if len(split_files[split]) < target_counts[split]:
-                projected_sum = sum(
-                    split_counts[split][k] + counts[k] for k in ENTITY_KEYS
-                )
+                projected_sum = sum(split_counts[split][k] + counts[k] for k in ENTITY_KEYS)
                 if projected_sum < min_entity_sum:
                     min_entity_sum = projected_sum
                     best_split = split
