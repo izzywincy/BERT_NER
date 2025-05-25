@@ -47,6 +47,17 @@ def split_files(files_counts, ratios):
         'test': total_files - int(ratios['train'] * total_files) - int(ratios['eval'] * total_files)
     }
 
+    # ✅ Step 1: Force distribute CNS-tagged files first
+    cns_files = [(f, c) for f, c in files_counts if c['constitutes'] > 0]
+    files_counts = [(f, c) for f, c in files_counts if c['constitutes'] == 0]  # remove CNS files from general pool
+
+    for i, (filename, counts) in enumerate(cns_files):
+        split = ['train', 'eval', 'test'][i % 3]  # round-robin into each split
+        split_files[split].append(filename)
+        for k in ENTITY_KEYS:
+            split_counts[split][k] += counts[k]
+
+    # ✅ Step 2: Distribute remaining files with balance logic
     for filename, counts in files_counts:
         best_split = None
         min_entity_sum = float('inf')
@@ -88,7 +99,7 @@ def main():
         print(f"\n📁 {split.upper()} ({len(split_files_dict[split])} files):")
         for key in ENTITY_KEYS:
             print(f"  {key}: {split_counts[split][key]}")
-    print("\n✅ Split complete!")
+    print("\n✅ Stratified split complete with CNS presence in all sets!")
 
 
 if __name__ == "__main__":
