@@ -6,7 +6,7 @@ from pathlib import Path
 # === CONFIG ===
 TRAIN_FOLDER = "train_data/train"
 DEFAULT_AUG_PER_FILE = 2  # Regular files
-CNS_AUG_PER_FILE = 5      # CNS-rich files
+CNS_AUG_PER_FILE = 10      # CNS-rich files
 
 # === STEP 1: COLLECT ENTITY BANK FROM TRAINING FILES ===
 def extract_entities_from_files(folder):
