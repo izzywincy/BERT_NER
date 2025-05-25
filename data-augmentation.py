@@ -5,7 +5,8 @@ from pathlib import Path
 
 # === CONFIG ===
 TRAIN_FOLDER = "train_data/train"
-AUG_PER_FILE = 2  # Number of augmented versions to create per original file
+DEFAULT_AUG_PER_FILE = 2  # Regular files
+CNS_AUG_PER_FILE = 5      # CNS-rich files
 
 # === STEP 1: COLLECT ENTITY BANK FROM TRAINING FILES ===
 def extract_entities_from_files(folder):
@@ -25,6 +26,14 @@ def extract_entities_from_files(folder):
                     entity_type = label.split("-")[1]
                     entity_bank[entity_type].add(token)
     return {k: list(v) for k, v in entity_bank.items()}
+
+# === STEP 1.5: Count CNS in a file ===
+def file_has_cns(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if "B-CNS" in line or "I-CNS" in line:
+                return True
+    return False
 
 # === STEP 2: AUGMENT A SINGLE FILE ===
 def augment_file(file_path, entity_bank, aug_id):
@@ -62,10 +71,11 @@ def main():
         if not filename.endswith(".iob"):
             continue
         file_path = os.path.join(TRAIN_FOLDER, filename)
-        for aug_id in range(1, AUG_PER_FILE + 1):
+        aug_rounds = CNS_AUG_PER_FILE if file_has_cns(file_path) else DEFAULT_AUG_PER_FILE
+        for aug_id in range(1, aug_rounds + 1):
             augment_file(file_path, entity_bank, aug_id)
 
-    print(f"Data augmentation completed. Augmented files saved in '{TRAIN_FOLDER}'.")
+    print(f"✅ Data augmentation completed. Augmented files saved in '{TRAIN_FOLDER}'.")
 
 if __name__ == "__main__":
     main()
