@@ -27,8 +27,9 @@ eval_files = [os.path.join(eval_folder, f) for f in os.listdir(eval_folder) if f
 
 file_count = len(train_files)  # Only count training files
 ###################################################################################################################################
-def parse_iob_file(file_path):
+def parse_iob_file(file_path, return_sources=False):
     tokens, labels = [], []
+    sources = []
     with open(file_path, "r", encoding="utf-8") as f:
         token_list, label_list = [], []
         for line in f:
@@ -40,11 +41,18 @@ def parse_iob_file(file_path):
             else:
                 tokens.append(token_list)
                 labels.append(label_list)
+                if return_sources:
+                    sources.append(os.path.basename(file_path))
                 token_list, label_list = [], []
         if token_list:
             tokens.append(token_list)
             labels.append(label_list)
+            if return_sources:
+                sources.append(os.path.basename(file_path))
+    if return_sources:
+        return {"tokens": tokens, "ner_tags": labels, "sources": sources}
     return {"tokens": tokens, "ner_tags": labels}
+
 
 ###################################################################################################################################
 #UPDATED
@@ -56,11 +64,13 @@ for file_path in train_files:
     train_labels.extend(data["ner_tags"])
 
 # Parse evaluation data
-eval_tokens, eval_labels = [], []
+eval_tokens, eval_labels, eval_sources = [], [], []
 for file_path in eval_files:
-    data = parse_iob_file(file_path)
+    data = parse_iob_file(file_path, return_sources=True)
     eval_tokens.extend(data["tokens"])
     eval_labels.extend(data["ner_tags"])
+    eval_sources.extend(data["sources"])
+
 ###################################################################################################################################
 
 # ✅ Step 4: Train-Test Split
@@ -209,6 +219,7 @@ for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axi
     words = eval_tokens[i]
     tokenized = tokenizer(words, truncation=True, padding="max_length", max_length=512, is_split_into_words=True)
     word_ids = tokenized.word_ids()
+    source_file = eval_sources[i]
 
     for true_id, pred_id, word_id in zip(label_seq, pred_seq, word_ids):
         if true_id == -100 or word_id is None:
@@ -234,7 +245,8 @@ for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axi
             mismatch_details.append({
                 "text": token_text,
                 "true": true_entity,
-                "pred": pred_entity
+                "pred": pred_entity,
+                "file": source_file
             })
 
 # Create and print confusion matrix
@@ -256,7 +268,7 @@ if grouped_mismatches:
     for true_entity in sorted(grouped_mismatches.keys()):
         print(f"\n🔸 {true_entity} →")
         for item in grouped_mismatches[true_entity]:
-            print(f"   • {item['text']} → {item['pred']}")
+            print(f"   • {item['text']} → {item['pred']} (from {item['file']})")
 else:
     print("\n✅ No misclassifications found.")
 
