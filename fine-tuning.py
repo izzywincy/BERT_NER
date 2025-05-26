@@ -15,6 +15,17 @@ from transformers import (
     pipeline
 )
 
+import random
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+
 ###################################################################################################################################
 #UPDATED
 # 📌 Step 1: Load IOB Files
@@ -112,7 +123,9 @@ def tokenize_and_align_labels(examples):
         examples["tokens"], truncation=True, padding="max_length", max_length=512, is_split_into_words=True
     )
     labels = []
-
+    ##############
+    model.eval()
+    ##############
     for i, label in enumerate(examples["ner_tags"]):
         word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to words
         label_ids = [-100] * len(word_ids)  # Default ignored labels
@@ -217,7 +230,16 @@ mismatch_details = []
 # Reconstruct spans for analysis
 for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axis=2))):
     words = eval_tokens[i]
-    tokenized = tokenizer(words, truncation=True, padding="max_length", max_length=512, is_split_into_words=True)
+    
+    tokenized = tokenizer(
+    words,
+    truncation=True,
+    padding="max_length",
+    max_length=512,
+    is_split_into_words=True,
+    return_tensors="pt"
+    )
+    
     word_ids = tokenized.word_ids()
     source_file = eval_sources[i]
 
@@ -252,8 +274,20 @@ for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axi
 # Create and print confusion matrix
 conf_matrix = confusion_matrix(flat_true, flat_pred, labels=list(range(len(ENTITY_TYPES))))
 conf_df = pd.DataFrame(conf_matrix, index=ENTITY_TYPES, columns=ENTITY_TYPES)
-print("\n📊 7x7 Confusion Matrix (Rows = True, Columns = Predicted):\n")
+
+missed_counts = []
+for i, entity in enumerate(ENTITY_TYPES):
+    total_true = conf_matrix[i, :].sum()      # Total times the entity appears in ground truth
+    correct = conf_matrix[i, i]               # Correct predictions
+    missed = total_true - correct             # Missed = total - correct
+    missed_counts.append(missed)
+
+conf_df['Missed'] = missed_counts  # This adds the column to the far right
+
+# Print updated confusion matrix
+print("\n📊 7x7 Confusion Matrix with 'Missed' Column (Rows = True, Columns = Predicted):\n")
 print(conf_df)
+
 
 from collections import defaultdict
 
@@ -271,5 +305,10 @@ if grouped_mismatches:
             print(f"   • {item['text']} → {item['pred']} (from {item['file']})")
 else:
     print("\n✅ No misclassifications found.")
+
+
+print("Total true entity labels counted:", len(flat_true))
+print("Breakdown:", np.bincount(flat_true))
+
 
 
