@@ -7,6 +7,7 @@ from datasets import Dataset, load_dataset
 import evaluate
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+import pandas as pd
 from transformers import (
     AutoTokenizer,
     AutoModelForTokenClassification,
@@ -215,7 +216,7 @@ print(f"🔹 Recall: {metrics['overall_recall']:.4f}")
 model.save_pretrained("./bert-legal-ner")
 tokenizer.save_pretrained("./bert-legal-ner")
 
-
+# 📌 Step 11: Matrix
 # 📌 Step 11: Matrix
 from sklearn.metrics import confusion_matrix
 import pandas as pd
@@ -310,5 +311,49 @@ else:
 print("Total true entity labels counted:", len(flat_true))
 print("Breakdown:", np.bincount(flat_true))
 
+# 📌 Step 12: Construct NER-style 2x2 Confusion Matrix
+tp = 0  # Correctly predicted entity with correct type
+fp = 0  # Predicted as entity but wrong type or shouldn't be an entity
+fn = 0  # Should be entity but model missed it
+tn = 0  # Correctly predicted non-entity
 
+for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axis=2))):
+    words = eval_tokens[i]
+    tokenized = tokenizer(
+        words,
+        truncation=True,
+        padding="max_length",
+        max_length=512,
+        is_split_into_words=True,
+        return_tensors="pt"
+    )
+    word_ids = tokenized.word_ids()
 
+    for true_id, pred_id, word_id in zip(label_seq, pred_seq, word_ids):
+        if word_id is None or true_id == -100:
+            continue
+
+        true_tag = id2label[true_id]
+        pred_tag = id2label[pred_id]
+
+        if true_tag == "O" and pred_tag == "O":
+            tn += 1
+        elif true_tag == "O" and pred_tag != "O":
+            fp += 1
+        elif true_tag != "O" and pred_tag == "O":
+            fn += 1
+        elif true_tag == pred_tag:
+            tp += 1
+        else:
+            fp += 1  # wrong entity type
+
+# Display matrix
+matrix_2x2 = pd.DataFrame(
+    [[tp, fn],
+     [fp, tn]],
+    index=["Actual: Entity", "Actual: Non-Entity"],
+    columns=["Predicted: Entity", "Predicted: Non-Entity"]
+)
+
+print("\n🧮 2x2 NER-Specific Confusion Matrix:\n")
+print(matrix_2x2)
