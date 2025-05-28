@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 # === CONFIG ===
-TRAIN_FOLDER = "train_data/train"
+TRAIN_FOLDER = "queue"
 DEFAULT_AUG_PER_FILE = 2  # Regular files
 CNS_AUG_PER_FILE = 10      # CNS-rich files
 
