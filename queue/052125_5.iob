@@ -1382,13 +1382,6 @@ all	O
 the	O
 people	O
 (	O
-Constitution	B-CNS
-,	I-CNS
-Article	I-CNS
-11	I-CNS
-,	I-CNS
-Section	I-CNS
-5	I-CNS
 )	O
 ,	O
 and	O
@@ -1410,13 +1403,6 @@ landowner	O
 and	O
 tenant	O
 (	O
-Constitution	B-CNS
-,	I-CNS
-Article	I-CNS
-XIV	I-CNS
-,	I-CNS
-Section	I-CNS
-6	I-CNS
 )	O
 ,	O
 the	O
