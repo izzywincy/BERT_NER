@@ -7,6 +7,7 @@ from datasets import Dataset, load_dataset
 import evaluate
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+import pandas as pd
 from transformers import (
     AutoTokenizer,
     AutoModelForTokenClassification,
@@ -14,6 +15,17 @@ from transformers import (
     Trainer,
     pipeline
 )
+
+import random
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 
 ###################################################################################################################################
 #UPDATED
@@ -89,13 +101,16 @@ model_name = "dslim/bert-base-NER"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 LABEL_MAP = {
-    "O": 0, "B-INS": 1, "I-INS": 2, "B-CNS": 3, "I-CNS": 4,
-    "B-STA": 5, "I-STA": 6, "B-RA": 7, "I-RA": 8, "B-PROM_DATE": 9, "I-PROM_DATE": 10,
-    "B-CASE_NUM": 11, "I-CASE_NUM": 12, "B-PERSON": 13, "I-PERSON": 14
+    "O": 0, 
+    "B-INS": 1, "I-INS": 2, 
+    "B-STA": 3, "I-STA": 4, 
+    "B-RA": 5, "I-RA": 6, 
+    "B-PROM_DATE": 7, "I-PROM_DATE": 8,
+    "B-CASE_NUM": 9, "I-CASE_NUM": 10, "B-PERSON": 11, "I-PERSON": 12
 }
 
 # Only 7 entity types (excluding 'O')
-ENTITY_TYPES = ['INS', 'CNS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
 ENTITY_INDEX = {name: i for i, name in enumerate(ENTITY_TYPES)}
 
 id2label = {v: k for k, v in LABEL_MAP.items()}
@@ -112,7 +127,9 @@ def tokenize_and_align_labels(examples):
         examples["tokens"], truncation=True, padding="max_length", max_length=512, is_split_into_words=True
     )
     labels = []
-
+    ##############
+    model.eval()
+    ##############
     for i, label in enumerate(examples["ner_tags"]):
         word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to words
         label_ids = [-100] * len(word_ids)  # Default ignored labels
@@ -202,7 +219,7 @@ print(f"🔹 Recall: {metrics['overall_recall']:.4f}")
 model.save_pretrained("./bert-legal-ner")
 tokenizer.save_pretrained("./bert-legal-ner")
 
-
+# 📌 Step 11: Matrix
 # 📌 Step 11: Matrix
 from sklearn.metrics import confusion_matrix
 import pandas as pd
@@ -217,7 +234,16 @@ mismatch_details = []
 # Reconstruct spans for analysis
 for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axis=2))):
     words = eval_tokens[i]
-    tokenized = tokenizer(words, truncation=True, padding="max_length", max_length=512, is_split_into_words=True)
+    
+    tokenized = tokenizer(
+    words,
+    truncation=True,
+    padding="max_length",
+    max_length=512,
+    is_split_into_words=True,
+    return_tensors="pt"
+    )
+    
     word_ids = tokenized.word_ids()
     source_file = eval_sources[i]
 
@@ -252,8 +278,20 @@ for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axi
 # Create and print confusion matrix
 conf_matrix = confusion_matrix(flat_true, flat_pred, labels=list(range(len(ENTITY_TYPES))))
 conf_df = pd.DataFrame(conf_matrix, index=ENTITY_TYPES, columns=ENTITY_TYPES)
-print("\n📊 7x7 Confusion Matrix (Rows = True, Columns = Predicted):\n")
+
+missed_counts = []
+for i, entity in enumerate(ENTITY_TYPES):
+    total_true = conf_matrix[i, :].sum()      # Total times the entity appears in ground truth
+    correct = conf_matrix[i, i]               # Correct predictions
+    missed = total_true - correct             # Missed = total - correct
+    missed_counts.append(missed)
+
+conf_df['Missed'] = missed_counts  # This adds the column to the far right
+
+# Print updated confusion matrix
+print("\n📊 7x7 Confusion Matrix with 'Missed' Column (Rows = True, Columns = Predicted):\n")
 print(conf_df)
+
 
 from collections import defaultdict
 
@@ -273,3 +311,52 @@ else:
     print("\n✅ No misclassifications found.")
 
 
+print("Total true entity labels counted:", len(flat_true))
+print("Breakdown:", np.bincount(flat_true))
+
+# 📌 Step 12: Construct NER-style 2x2 Confusion Matrix
+tp = 0  # Correctly predicted entity with correct type
+fp = 0  # Predicted as entity but wrong type or shouldn't be an entity
+fn = 0  # Should be entity but model missed it
+tn = 0  # Correctly predicted non-entity
+
+for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axis=2))):
+    words = eval_tokens[i]
+    tokenized = tokenizer(
+        words,
+        truncation=True,
+        padding="max_length",
+        max_length=512,
+        is_split_into_words=True,
+        return_tensors="pt"
+    )
+    word_ids = tokenized.word_ids()
+
+    for true_id, pred_id, word_id in zip(label_seq, pred_seq, word_ids):
+        if word_id is None or true_id == -100:
+            continue
+
+        true_tag = id2label[true_id]
+        pred_tag = id2label[pred_id]
+
+        if true_tag == "O" and pred_tag == "O":
+            tn += 1
+        elif true_tag == "O" and pred_tag != "O":
+            fp += 1
+        elif true_tag != "O" and pred_tag == "O":
+            fn += 1
+        elif true_tag == pred_tag:
+            tp += 1
+        else:
+            fp += 1  # wrong entity type
+
+# Display matrix
+matrix_2x2 = pd.DataFrame(
+    [[tp, fn],
+     [fp, tn]],
+    index=["Actual: Entity", "Actual: Non-Entity"],
+    columns=["Predicted: Entity", "Predicted: Non-Entity"]
+)
+
+print("\n🧮 2x2 NER-Specific Confusion Matrix:\n")
+print(matrix_2x2)
