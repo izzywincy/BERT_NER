@@ -42,3 +42,11 @@ Run the following command:
 1. Run `count.py` to start tallying a folder
 2. Provide the correct folder name
 3. A tally of each document's classifications is generated as well as the folder's summary.
+
+# Data Augmentation and Splitting
+1. Run `split_balance.py` to split the cleaned, `queue`, to train, eval, and test splits
+- 90% of CNS goes to train, 10% goes to eval
+2. Run `data-augmentation.py` to augment training data (entity swapping) in `train_data/train`
+- Augment CNS in train  
+3. Run command `cp train_data/train/*_aug*.iob queue/` to copy all augmented data to `queue`
+4. Start training
