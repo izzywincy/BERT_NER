@@ -5,10 +5,9 @@ from pathlib import Path
 
 # === CONFIG ===
 TRAIN_FOLDER = "queue"
-DEFAULT_AUG_PER_FILE = 2  # Regular files
-CNS_AUG_PER_FILE = 10      # CNS-rich files
+AUG_PER_FILE = 2  # All files now use the same count
 
-# === STEP 1: COLLECT ENTITY BANK FROM TRAINING FILES ===
+# === STEP 1: COLLECT ENTITY BANK FROM TRAINING FILES (excluding CNS) ===
 def extract_entities_from_files(folder):
     entity_bank = defaultdict(set)
     for filename in os.listdir(folder):
@@ -24,16 +23,9 @@ def extract_entities_from_files(folder):
                 token, label = parts
                 if label.startswith("B-") or label.startswith("I-"):
                     entity_type = label.split("-")[1]
-                    entity_bank[entity_type].add(token)
+                    if entity_type != "CNS":  # 🧼 Exclude CNS tokens
+                        entity_bank[entity_type].add(token)
     return {k: list(v) for k, v in entity_bank.items()}
-
-# === STEP 1.5: Count CNS in a file ===
-def file_has_cns(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if "B-CNS" in line or "I-CNS" in line:
-                return True
-    return False
 
 # === STEP 2: AUGMENT A SINGLE FILE ===
 def augment_file(file_path, entity_bank, aug_id):
@@ -52,7 +44,7 @@ def augment_file(file_path, entity_bank, aug_id):
         token, label = parts
         if label.startswith("B-") or label.startswith("I-"):
             entity_type = label.split("-")[1]
-            if entity_type in entity_bank and entity_bank[entity_type]:
+            if entity_type != "CNS" and entity_type in entity_bank and entity_bank[entity_type]:
                 token = random.choice(entity_bank[entity_type])
         augmented_lines.append(f"{token}\t{label}\n")
 
@@ -65,17 +57,16 @@ def augment_file(file_path, entity_bank, aug_id):
 # === STEP 3: MAIN DRIVER ===
 def main():
     entity_bank = extract_entities_from_files(TRAIN_FOLDER)
-    print(f"Collected entities from {len(entity_bank)} types.")
+    print(f"Collected entities from {len(entity_bank)} types (excluding CNS).")
 
     for filename in os.listdir(TRAIN_FOLDER):
         if not filename.endswith(".iob"):
             continue
         file_path = os.path.join(TRAIN_FOLDER, filename)
-        aug_rounds = CNS_AUG_PER_FILE if file_has_cns(file_path) else DEFAULT_AUG_PER_FILE
-        for aug_id in range(1, aug_rounds + 1):
+        for aug_id in range(1, AUG_PER_FILE + 1):
             augment_file(file_path, entity_bank, aug_id)
 
-    print(f"✅ Data augmentation completed. Augmented files saved in '{TRAIN_FOLDER}'.")
+    print(f"✅ Data augmentation completed (excluding CNS). Files saved in '{TRAIN_FOLDER}'.")
 
 if __name__ == "__main__":
     main()
