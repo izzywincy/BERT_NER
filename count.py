@@ -10,7 +10,6 @@ def count_in_file(file_path):
         'prom_dates': 0,
         'republic_acts': 0,
         'statutes': 0,
-        'constitutes': 0,
     }
 
     # map from entity class to counter key
@@ -21,7 +20,6 @@ def count_in_file(file_path):
         'PROM_DATE': 'prom_dates',
         'RA': 'republic_acts',
         'STA': 'statutes',
-        'CNS': 'constitutes',
     }
 
     # check if currently inside an entity
@@ -54,7 +52,6 @@ def tally_folder(folder_path):
         'prom_dates': 0,
         'republic_acts': 0,
         'statutes': 0,
-        'constitutes': 0,
     }
 
     for filename in os.listdir(folder_path):
