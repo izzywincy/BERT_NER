@@ -1,8 +1,11 @@
 from transformers import BertForTokenClassification, AutoTokenizer
 import torch
 import os
+from sklearn.metrics import classification_report, confusion_matrix
+import pandas as pd
 from collections import Counter
-from sklearn.metrics import classification_report
+
+
 
 # ------------------ Step 1: Load the Trained Model & Tokenizer ------------------
 model_path = "./bert-legal-ner"
@@ -34,19 +37,32 @@ def load_iob_file(file_path):
             labels.append(label_list)
     return tokens, labels
 
-test_folder = "./train_data/test"  # Change to the actual test set folder
+test_folder = "./train_data/test"
 test_files = [os.path.join(test_folder, f) for f in os.listdir(test_folder) if f.endswith(".iob")]
 
 id2label = model.config.id2label
 
-# ------------------ Step 3: Process Each Test File Separately ------------------
-for file_path in test_files:
-    filename = os.path.basename(file_path)
-    test_tokens, test_labels = load_iob_file(file_path)
-    print(f"\n📌 Processing File: {filename}")
-    print(f"✅ Successfully Loaded {filename}!")
+# ------------------ Step 3: Accumulate Predictions ------------------
+all_true_labels = []
+all_pred_labels = []
 
-    # ------------------ Step 4: Run Model Inference ------------------
+def align_predictions(predictions, tokenized_inputs):
+    aligned_labels = []
+    for batch_idx, pred in enumerate(predictions):
+        word_ids = tokenized_inputs.word_ids(batch_index=batch_idx)
+        previous_word_idx = None
+        aligned_preds = []
+        for idx, word_idx in enumerate(word_ids):
+            if word_idx is None or word_idx == previous_word_idx:
+                continue
+            aligned_preds.append(id2label[pred[idx].item()])
+            previous_word_idx = word_idx
+        aligned_labels.append(aligned_preds)
+    return aligned_labels
+
+for file_path in test_files:
+    test_tokens, test_labels = load_iob_file(file_path)
+
     tokenized_inputs = tokenizer(
         test_tokens, padding=True, truncation=True, is_split_into_words=True, return_tensors="pt"
     )
@@ -57,43 +73,107 @@ for file_path in test_files:
     logits = outputs.logits
     predictions = torch.argmax(logits, dim=2)
 
-    # ------------------ Step 5: Convert Predictions to Labels ------------------
-    def align_predictions(predictions, tokenized_inputs):
-        aligned_labels = []
-        for batch_idx, pred in enumerate(predictions):
-            word_ids = tokenized_inputs.word_ids(batch_index=batch_idx)
-            previous_word_idx = None
-            aligned_preds = []
-            for idx, word_idx in enumerate(word_ids):
-                if word_idx is None or word_idx == previous_word_idx:
-                    continue
-                aligned_preds.append(id2label[pred[idx].item()])
-                previous_word_idx = word_idx
-            aligned_labels.append(aligned_preds)
-        return aligned_labels
-
     cleaned_labels = align_predictions(predictions, tokenized_inputs)
 
-    # ------------------ Step 6: Compute Evaluation Metrics ------------------
-    true_labels = [label for sent_labels in test_labels for label in sent_labels]
-    pred_labels = [label for sent_labels in cleaned_labels for label in sent_labels]
+    file_true = [label for sent_labels in test_labels for label in sent_labels]
+    file_pred = [label for sent_labels in cleaned_labels for label in sent_labels]
 
-    # Ensure consistent length
-    min_length = min(len(true_labels), len(pred_labels))
-    true_labels = true_labels[:min_length]
-    pred_labels = pred_labels[:min_length]
+    min_length = min(len(file_true), len(file_pred))
+    file_true = file_true[:min_length]
+    file_pred = file_pred[:min_length]
 
-    print("\n🔹 Evaluation Metrics for", filename)
-    print(classification_report(true_labels, pred_labels, digits=4))
+    all_true_labels.extend(file_true)
+    all_pred_labels.extend(file_pred)
 
-    # ------------------ Step 7: Print Sample NER Output ------------------
-    print("\n🔹 Sample NER Output from", filename)
-    for token, label in zip(test_tokens[0], cleaned_labels[0]):
-        print(f"{token}: {label}")
+# ------------------ Step 4: Global Evaluation ------------------
+print("\n========================= 📊 GLOBAL EVALUATION =========================")
 
-    # ------------------ Step 8: Display Label Distribution ------------------
-    label_counts = Counter(true_labels)
-    print("\n🔹 Label Distribution in", filename)
-    print(label_counts)
+# 🔹 Classification Report
+print("\n🔹 Overall Classification Report:")
+print(classification_report(all_true_labels, all_pred_labels, digits=4))
 
-    print("\n" + "=" * 60)  # Separator for better readability
+# 🔹 7×7 Entity-Level Confusion Matrix
+ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_INDEX = {e: i for i, e in enumerate(ENTITY_TYPES)}
+
+def strip_prefix(label):
+    return label.replace("B-", "").replace("I-", "")
+
+flat_true, flat_pred = [], []
+for t, p in zip(all_true_labels, all_pred_labels):
+    if t != "O" and p != "O":
+        t_clean = strip_prefix(t)
+        p_clean = strip_prefix(p)
+        if t_clean in ENTITY_INDEX and p_clean in ENTITY_INDEX:
+            flat_true.append(ENTITY_INDEX[t_clean])
+            flat_pred.append(ENTITY_INDEX[p_clean])
+
+conf_matrix = confusion_matrix(flat_true, flat_pred, labels=list(range(len(ENTITY_TYPES))))
+conf_df = pd.DataFrame(conf_matrix, index=ENTITY_TYPES, columns=ENTITY_TYPES)
+
+missed_counts = []
+for i, entity in enumerate(ENTITY_TYPES):
+    total_true = conf_matrix[i, :].sum()
+    correct = conf_matrix[i, i]
+    missed = total_true - correct
+    missed_counts.append(missed)
+conf_df["Missed"] = missed_counts
+
+print("\n📊 Global Confusion Matrix (Entity-Level):")
+print(conf_df)
+
+# 🔹 2×2 NER-Style Confusion Matrix
+tp = fp = fn = tn = 0
+for true, pred in zip(all_true_labels, all_pred_labels):
+    if true == "O" and pred == "O":
+        tn += 1
+    elif true == "O" and pred != "O":
+        fp += 1
+    elif true != "O" and pred == "O":
+        fn += 1
+    elif true == pred:
+        tp += 1
+    else:
+        fp += 1  # Wrong entity type still counts as FP
+
+matrix_2x2 = pd.DataFrame(
+    [[tp, fn],
+     [fp, tn]],
+    index=["Actual: Entity", "Actual: Non-Entity"],
+    columns=["Predicted: Entity", "Predicted: Non-Entity"]
+)
+
+print("\n🧮 Global 2×2 NER-Style Confusion Matrix:")
+print(matrix_2x2)
+
+true_stripped = [strip_prefix(lbl) for lbl in all_true_labels if lbl != "O" and strip_prefix(lbl) in ENTITY_INDEX]
+print("\n📌 Stripped true entity counts (aligned):")
+print(Counter(true_stripped))
+
+# Get predicted B-TAGs only (first token of entity span)
+pred_entity_counts = Counter()
+correct_entity_counts = Counter()
+true_entity_counts = Counter()
+
+for true, pred in zip(all_true_labels, all_pred_labels):
+    if true.startswith("B-"):
+        entity = strip_prefix(true)
+        if entity in ENTITY_TYPES:
+            true_entity_counts[entity] += 1
+            if pred == true:
+                correct_entity_counts[entity] += 1
+
+    if pred.startswith("B-"):
+        entity = strip_prefix(pred)
+        if entity in ENTITY_TYPES:
+            pred_entity_counts[entity] += 1
+
+# 📋 Print results
+print("\n📌 Entity-Level Comparison (B-TAGs only):")
+print(f"{'ENTITY':<12}{'TRUE':>6} | {'PREDICTED':>10} | {'CORRECT':>8}")
+print("-" * 40)
+for entity in ENTITY_TYPES:
+    true_cnt = true_entity_counts[entity]
+    pred_cnt = pred_entity_counts[entity]
+    correct_cnt = correct_entity_counts[entity]
+    print(f"{entity:<12}{true_cnt:>6} | {pred_cnt:>10} | {correct_cnt:>8}")
