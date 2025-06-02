@@ -98,6 +98,36 @@ for file_path in test_files:
 # ------------------ Step 4: Global Evaluation ------------------
 print("\n========================= 📊 GLOBAL EVALUATION =========================")
 
+test_files = [os.path.join(test_folder, f) for f in os.listdir(test_folder) if f.endswith(".iob")]
+
+from evaluate import load
+seqeval = load("seqeval")
+
+# Re-group flat lists into sentence-level lists for seqeval
+sentence_preds = []
+sentence_trues = []
+
+current_pred = []
+current_true = []
+
+for i in range(len(all_tokens)):
+    current_pred.append(all_pred_labels[i])
+    current_true.append(all_true_labels[i])
+
+    # End of sentence assumed if next token belongs to new file or original sentence structure
+    if i == len(all_tokens) - 1 or all_sources[i] != all_sources[i + 1]:
+        sentence_preds.append(current_pred)
+        sentence_trues.append(current_true)
+        current_pred = []
+        current_true = []
+
+results = seqeval.compute(predictions=sentence_preds, references=sentence_trues)
+print(f"\n📄 Documents tested: {len(test_files)}")
+print(f"\n🔹 F1 Score: {results['overall_f1']:.4f}")
+print(f"🔹 Precision: {results['overall_precision']:.4f}")
+print(f"🔹 Recall: {results['overall_recall']:.4f}")
+
+
 # 🔹 Classification Report
 print("\n🔹 Overall Classification Report:")
 print(classification_report(all_true_labels, all_pred_labels, digits=4))
