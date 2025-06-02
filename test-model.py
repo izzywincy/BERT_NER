@@ -165,6 +165,10 @@ for true, pred, token, source in zip(all_true_labels, all_pred_labels, all_token
     if true == "O" and pred == "O":
         continue
 
+    if strip_prefix(true) == strip_prefix(pred):
+        continue  # skip if entity types are the same
+
+
     true_entity = strip_prefix(true)
     pred_entity = strip_prefix(pred)
 
