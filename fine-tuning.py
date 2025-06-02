@@ -227,7 +227,7 @@ tokenizer.save_pretrained("./bert-legal-ner")
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 
-ENTITY_TYPES = ['INS', 'CNS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
 ENTITY_INDEX = {name: i for i, name in enumerate(ENTITY_TYPES)}
 
 flat_true = []
@@ -298,22 +298,68 @@ print(conf_df)
 
 from collections import defaultdict
 
-# Group mismatches by true entity type
+from collections import defaultdict
+
+seen_mismatches = set()
 grouped_mismatches = defaultdict(list)
 
-for entry in mismatch_details:
-    grouped_mismatches[entry['true']].append(entry)
+for i, (label_seq, pred_seq) in enumerate(zip(labels, np.argmax(predictions, axis=2))):
+    words = eval_tokens[i]
+    source_file = eval_sources[i]
 
+    tokenized = tokenizer(
+        words,
+        truncation=True,
+        padding="max_length",
+        max_length=512,
+        is_split_into_words=True,
+        return_tensors="pt"
+    )
+
+    word_ids = tokenized.word_ids()
+
+    for true_id, pred_id, word_id in zip(label_seq, pred_seq, word_ids):
+        if true_id == -100 or word_id is None:
+            continue
+
+        token = words[word_id]
+        true_tag = id2label[true_id]
+        pred_tag = id2label[pred_id]
+
+        # Skip both "O"
+        if true_tag == "O" and pred_tag == "O":
+            continue
+
+        # Skip if entity types are the same (B-/I- variants treated as correct)
+        if true_tag != "O" and pred_tag != "O":
+            if true_tag.replace("B-", "").replace("I-", "") == pred_tag.replace("B-", "").replace("I-", ""):
+                continue
+
+        true_entity = true_tag.replace("B-", "").replace("I-", "")
+        pred_entity = pred_tag.replace("B-", "").replace("I-", "")
+
+        # Skip if true label is "O" or if both entities are untracked
+        if true_tag == "O":
+            continue
+        if true_entity not in ENTITY_INDEX and pred_entity not in ENTITY_INDEX:
+            continue
+
+        key = (true_entity, pred_entity, token, source_file)
+        if key not in seen_mismatches:
+            seen_mismatches.add(key)
+            grouped_mismatches[true_entity].append((pred_entity, token, source_file))
+
+# Final printout
 if grouped_mismatches:
-    print("\n❌ Misclassified Tokens Grouped by True Entity:")
-    for true_entity in sorted(grouped_mismatches.keys()):
+    print("\n❌ Unique Misclassified Tokens Grouped by True Entity:")
+    for true_entity in sorted(grouped_mismatches):
         print(f"\n🔸 {true_entity} →")
-        for item in grouped_mismatches[true_entity]:
-            print(f"   • {item['text']} → {item['pred']} (from {item['file']})")
+        for pred_entity, token, source_file in grouped_mismatches[true_entity]:
+            print(f"   • '{token}' → predicted as {pred_entity} (from {source_file})")
 else:
     print("\n✅ No misclassifications found.")
 
-
+# Print total counts of true entity labels
 print("Total true entity labels counted:", len(flat_true))
 print("Breakdown:", np.bincount(flat_true))
 
