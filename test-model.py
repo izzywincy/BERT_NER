@@ -43,6 +43,8 @@ id2label = model.config.id2label
 # ------------------ Step 3: Accumulate Predictions ------------------
 all_true_labels = []
 all_pred_labels = []
+all_tokens = []
+all_sources = []
 
 def align_predictions(predictions, tokenized_inputs):
     aligned_labels = []
@@ -60,6 +62,7 @@ def align_predictions(predictions, tokenized_inputs):
 
 for file_path in test_files:
     test_tokens, test_labels = load_iob_file(file_path)
+    source_tags = [os.path.basename(file_path)] * len(test_tokens)
 
     tokenized_inputs = tokenizer(
         test_tokens, padding=True, truncation=True, is_split_into_words=True, return_tensors="pt"
@@ -72,16 +75,25 @@ for file_path in test_files:
     predictions = torch.argmax(logits, dim=2)
 
     cleaned_labels = align_predictions(predictions, tokenized_inputs)
+    # Flatten token list for token tracking
+    file_tokens = [token for sent_tokens in test_tokens for token in sent_tokens]
+    file_sources = [src for sent, src in zip(test_tokens, source_tags) for _ in sent]
+
 
     file_true = [label for sent_labels in test_labels for label in sent_labels]
     file_pred = [label for sent_labels in cleaned_labels for label in sent_labels]
 
-    min_length = min(len(file_true), len(file_pred))
+    min_length = min(len(file_true), len(file_pred), len(file_tokens), len(file_sources))
     file_true = file_true[:min_length]
     file_pred = file_pred[:min_length]
+    file_tokens = file_tokens[:min_length]
+    file_sources = file_sources[:min_length]
 
     all_true_labels.extend(file_true)
     all_pred_labels.extend(file_pred)
+    all_tokens.extend(file_tokens)
+    all_sources.extend(file_sources)
+
 
 # ------------------ Step 4: Global Evaluation ------------------
 print("\n========================= 📊 GLOBAL EVALUATION =========================")
@@ -143,3 +155,37 @@ matrix_2x2 = pd.DataFrame(
 
 print("\n🧮 Global 2×2 NER-Style Confusion Matrix:")
 print(matrix_2x2)
+
+from collections import defaultdict
+
+seen_mismatches = set()
+grouped_mismatches = defaultdict(list)
+
+for true, pred, token, source in zip(all_true_labels, all_pred_labels, all_tokens, all_sources):
+    if true == "O" and pred == "O":
+        continue
+
+    true_entity = strip_prefix(true)
+    pred_entity = strip_prefix(pred)
+
+    if true == "O":
+        continue
+
+    if true_entity not in ENTITY_INDEX and pred_entity not in ENTITY_INDEX:
+        continue
+
+    if true != pred:
+        key = (true_entity, pred_entity, token, source)
+        if key not in seen_mismatches:
+            seen_mismatches.add(key)
+            grouped_mismatches[true_entity].append((pred_entity, token, source))
+
+# Final printout
+if grouped_mismatches:
+    print("\n❌ Unique Misclassified Tokens Grouped by True Entity:")
+    for true_entity in sorted(grouped_mismatches):
+        print(f"\n🔸 {true_entity} →")
+        for pred_entity, token, source in grouped_mismatches[true_entity]:
+            print(f"   • '{token}' → predicted as {pred_entity} (from {source})")
+else:
+    print("\n✅ No misclassifications found.")
