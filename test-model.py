@@ -5,8 +5,6 @@ from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 from collections import Counter
 
-
-
 # ------------------ Step 1: Load the Trained Model & Tokenizer ------------------
 model_path = "./bert-legal-ner"
 if not os.path.exists(model_path):
@@ -145,35 +143,3 @@ matrix_2x2 = pd.DataFrame(
 
 print("\n🧮 Global 2×2 NER-Style Confusion Matrix:")
 print(matrix_2x2)
-
-true_stripped = [strip_prefix(lbl) for lbl in all_true_labels if lbl != "O" and strip_prefix(lbl) in ENTITY_INDEX]
-print("\n📌 Stripped true entity counts (aligned):")
-print(Counter(true_stripped))
-
-# Get predicted B-TAGs only (first token of entity span)
-pred_entity_counts = Counter()
-correct_entity_counts = Counter()
-true_entity_counts = Counter()
-
-for true, pred in zip(all_true_labels, all_pred_labels):
-    if true.startswith("B-"):
-        entity = strip_prefix(true)
-        if entity in ENTITY_TYPES:
-            true_entity_counts[entity] += 1
-            if pred == true:
-                correct_entity_counts[entity] += 1
-
-    if pred.startswith("B-"):
-        entity = strip_prefix(pred)
-        if entity in ENTITY_TYPES:
-            pred_entity_counts[entity] += 1
-
-# 📋 Print results
-print("\n📌 Entity-Level Comparison (B-TAGs only):")
-print(f"{'ENTITY':<12}{'TRUE':>6} | {'PREDICTED':>10} | {'CORRECT':>8}")
-print("-" * 40)
-for entity in ENTITY_TYPES:
-    true_cnt = true_entity_counts[entity]
-    pred_cnt = pred_entity_counts[entity]
-    correct_cnt = correct_entity_counts[entity]
-    print(f"{entity:<12}{true_cnt:>6} | {pred_cnt:>10} | {correct_cnt:>8}")
