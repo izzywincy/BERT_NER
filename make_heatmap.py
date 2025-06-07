@@ -55,8 +55,14 @@ for i in range(selectedMatrix.shape[0]):
     else:
         normalized_matrix[i] = (row - min_val) / (max_val - min_val)
 
-plt.figure(figsize=(10, 6), dpi=300)
+# Compute percentage matrix (non-raw value)
+percentage_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
+for i in range(selectedMatrix.shape[0]):
+    row_sum = selectedMatrix[i].sum()
+    if row_sum != 0:
+        percentage_matrix[i] = (selectedMatrix[i] / row_sum) * 100
 
+plt.figure(figsize=(10, 6), dpi=300)
 zoom_factor = 10
 smooth_matrix = zoom(normalized_matrix, zoom=zoom_factor, order=3)
 
@@ -71,17 +77,20 @@ sns.heatmap(
 # Overlay original values at correct zoomed-in positions
 for i in range(selectedMatrix.shape[0]):
     for j in range(selectedMatrix.shape[1]):
-        val = selectedMatrix[i, j]
-        plt.text(
-            j * zoom_factor + zoom_factor / 2,
-            i * zoom_factor + zoom_factor / 2,
-            str(val),
-            ha='center',
-            va='center',
-            fontsize=8,
-            color='black',
-            weight='bold'
-        )
+        raw_val = selectedMatrix[i, j]
+        percent_val = percentage_matrix[i, j]
+        if raw_val != 0:
+            text = f"{raw_val}\n({percent_val:.0f}%)"
+            plt.text(
+                j * zoom_factor + zoom_factor / 2,
+                i * zoom_factor + zoom_factor / 2,
+                text,
+                ha='center',
+                va='center',
+                fontsize=8,
+                color='black',
+                weight='bold'
+            )
 
 plt.xticks(
     ticks=[j * zoom_factor + zoom_factor / 2 for j in range(selectedMatrix.shape[1])],
