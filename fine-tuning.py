@@ -7,6 +7,7 @@ from datasets import Dataset, load_dataset
 import evaluate
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 import pandas as pd
 from transformers import (
     AutoTokenizer,
@@ -295,6 +296,20 @@ conf_df['Missed'] = missed_counts  # This adds the column to the far right
 print("\n📊 7x7 Confusion Matrix with 'Missed' Column (Rows = True, Columns = Predicted):\n")
 print(conf_df)
 
+# Flatten and decode predicted and true labels
+true_labels_flat = []
+pred_labels_flat = []
+
+label_map = id2label  # from earlier
+
+for label_seq, pred_seq in zip(labels, np.argmax(predictions, axis=2)):
+    for true_id, pred_id in zip(label_seq, pred_seq):
+        if true_id != -100:
+            true_labels_flat.append(label_map[true_id])
+            pred_labels_flat.append(label_map[pred_id])
+
+print("\n🔹 Overall Classification Report:")
+print(classification_report(true_labels_flat, pred_labels_flat, digits=4, zero_division=0))
 
 from collections import defaultdict
 
