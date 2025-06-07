@@ -2,6 +2,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from scipy.ndimage import zoom
 
 col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
 row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
@@ -43,23 +44,54 @@ post_augmented_test = np.array([
     [15, 0, 0, 0, 5, 1391, 20]
 ])
 
+# EDIT HERE
+selectedMatrix = pre_augmented_test
+
+
 plt.figure(figsize=(10, 6), dpi=300)
 
+zoom_factor = 10
+smooth_matrix = zoom(selectedMatrix, zoom=zoom_factor, order=3)
+
 sns.heatmap(
-    pre_augmented_test, 
-    annot=True, 
-    fmt='d', 
-    cmap='YlOrRd', 
-    linewidths=0.5,
+    smooth_matrix, 
+    cmap='YlOrRd',
     cbar=True,
-    vmin=0, # minimum value for color scale
-    vmax=100, # maximum value for color scale
-    xticklabels=col_labels,
-    yticklabels=row_labels
+    xticklabels=False,
+    yticklabels=False
     )
+# Overlay original values at correct zoomed-in positions
+for i in range(selectedMatrix.shape[0]):
+    for j in range(selectedMatrix.shape[1]):
+        val = selectedMatrix[i, j]
+        plt.text(
+            j * zoom_factor + zoom_factor / 2,
+            i * zoom_factor + zoom_factor / 2,
+            str(val),
+            ha='center',
+            va='center',
+            fontsize=8,
+            color='black',
+            weight='bold'
+        )
+
+plt.xticks(
+    ticks=[j * zoom_factor + zoom_factor / 2 for j in range(selectedMatrix.shape[1])],
+    labels=col_labels,  # was row_labels before
+    rotation=45,
+    ha='right'
+)
+plt.yticks(
+    ticks=[i * zoom_factor + zoom_factor / 2 for i in range(selectedMatrix.shape[0])],
+    labels=row_labels,  # was col_labels before
+    rotation=0
+)
+
+
 plt.title('Pre-Augmented Confusion Matrix (Test)')
-
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.tight_layout()
 plt.savefig("pre-aug-conf-test.png", bbox_inches='tight')
-
 plt.show()
 
