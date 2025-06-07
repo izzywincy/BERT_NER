@@ -7,7 +7,6 @@ from scipy.ndimage import zoom
 col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
 row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
 
-
 pre_augmented_train_eval = np.array([
     [885, 16, 0, 0, 4, 46, 66],
     [2, 88, 0, 0, 5, 0, 7],
@@ -47,11 +46,20 @@ post_augmented_test = np.array([
 # EDIT HERE
 selectedMatrix = pre_augmented_test
 
+# Normalize each row 
+normalized_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
+for i in range(selectedMatrix.shape[0]):
+    row = selectedMatrix[i]
+    min_val, max_val = row.min(), row.max()
+    if max_val - min_val == 0:
+        normalized_matrix[i] = 0  # Avoid division by zero
+    else:
+        normalized_matrix[i] = (row - min_val) / (max_val - min_val)
 
 plt.figure(figsize=(10, 6), dpi=300)
 
 zoom_factor = 10
-smooth_matrix = zoom(selectedMatrix, zoom=zoom_factor, order=3)
+smooth_matrix = zoom(normalized_matrix, zoom=zoom_factor, order=3)
 
 sns.heatmap(
     smooth_matrix, 
@@ -60,6 +68,7 @@ sns.heatmap(
     xticklabels=False,
     yticklabels=False
     )
+    
 # Overlay original values at correct zoomed-in positions
 for i in range(selectedMatrix.shape[0]):
     for j in range(selectedMatrix.shape[1]):
