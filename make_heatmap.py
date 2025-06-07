@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 
 from scipy.ndimage import zoom
 
-col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
-row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
-
 pre_augmented_train_eval = np.array([
     [885, 16, 0, 0, 4, 46, 66],
     [2, 88, 0, 0, 5, 0, 7],
@@ -43,8 +40,10 @@ post_augmented_test = np.array([
     [15, 0, 0, 0, 5, 1391, 20]
 ])
 
-# EDIT HERE
+# Matrix setup
 selectedMatrix = pre_augmented_test
+col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
+row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
 
 # Normalize each row 
 normalized_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
@@ -68,7 +67,7 @@ sns.heatmap(
     xticklabels=False,
     yticklabels=False
     )
-    
+
 # Overlay original values at correct zoomed-in positions
 for i in range(selectedMatrix.shape[0]):
     for j in range(selectedMatrix.shape[1]):
