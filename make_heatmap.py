@@ -1,7 +1,7 @@
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import matplotlib.ticker as ticker
 from scipy.ndimage import zoom
 
 pre_augmented_train_eval = np.array([
@@ -46,14 +46,30 @@ col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
 row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
 
 # Normalize each row 
+# Row-wise normalize to 0–100
 normalized_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
 for i in range(selectedMatrix.shape[0]):
     row = selectedMatrix[i]
+    row_min, row_max = row.min(), row.max()
+    if row_max > row_min:
+        normalized_matrix[i] = (row - row_min) / (row_max - row_min) * 100
+
+# Set diagonal to 0 (so it appears yellow on YlOrRd)
+highlight_matrix = normalized_matrix.copy().astype(np.float64)
+
+# Step 1: zero out diagonals
+for i in range(min(highlight_matrix.shape[0], highlight_matrix.shape[1])):
+    highlight_matrix[i, i] = 0
+
+# Step 2: row-wise normalize to 0–100
+for i in range(highlight_matrix.shape[0]):
+    row = highlight_matrix[i]
     min_val, max_val = row.min(), row.max()
-    if max_val - min_val == 0:
-        normalized_matrix[i] = 0  # Avoid division by zero
+    if max_val > min_val:
+        highlight_matrix[i] = (row - min_val) / (max_val - min_val) * 100
     else:
-        normalized_matrix[i] = (row - min_val) / (max_val - min_val)
+        highlight_matrix[i] = 0
+
 
 # Compute percentage matrix (non-raw value)
 percentage_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
@@ -64,9 +80,10 @@ for i in range(selectedMatrix.shape[0]):
 
 plt.figure(figsize=(10, 6), dpi=300)
 zoom_factor = 10
-smooth_matrix = zoom(normalized_matrix, zoom=zoom_factor, order=3)
+smooth_matrix = zoom(highlight_matrix, zoom=zoom_factor, order=3)
+smooth_matrix = np.clip(smooth_matrix, 0, 100)
 
-sns.heatmap(
+ax = sns.heatmap(
     smooth_matrix, 
     cmap='YlOrRd',
     cbar=True,
@@ -104,6 +121,9 @@ plt.yticks(
     rotation=0
 )
 
+colorbar = ax.collections[0].colorbar
+colorbar.locator = ticker.MaxNLocator(integer=True)
+colorbar.update_ticks()
 
 plt.title('Pre-Augmented Confusion Matrix (Test)')
 plt.xlabel('Predicted Label')
