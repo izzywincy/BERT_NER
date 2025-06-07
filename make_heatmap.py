@@ -3,6 +3,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
+col_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON","Missed"]
+row_labels = ["INS","STA","RA","PROM_DATE","CASE_NUM","PERSON"]
+
+
 pre_augmented_train_eval = np.array([
     [885, 16, 0, 0, 4, 46, 66],
     [2, 88, 0, 0, 5, 0, 7],
@@ -39,7 +43,7 @@ post_augmented_test = np.array([
     [15, 0, 0, 0, 5, 1391, 20]
 ])
 
-plt.figure(figsize=(8, 6), dpi=300)
+plt.figure(figsize=(10, 6), dpi=300)
 
 sns.heatmap(
     pre_augmented_test, 
@@ -49,11 +53,13 @@ sns.heatmap(
     linewidths=0.5,
     cbar=True,
     vmin=0, # minimum value for color scale
-    vmax=100 # maximum value for color scale
+    vmax=100, # maximum value for color scale
+    xticklabels=col_labels,
+    yticklabels=row_labels
     )
-plt.title('Pre-Augmented Confusion Matrix (Train/Eval)')
+plt.title('Pre-Augmented Confusion Matrix (Test)')
 
-plt.savefig("pre-aug-conf-train-eval.png", bbox_inches='tight')
+plt.savefig("pre-aug-conf-test.png", bbox_inches='tight')
 
 plt.show()
 
