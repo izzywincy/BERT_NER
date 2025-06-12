@@ -51,7 +51,7 @@ for i in range(selectedMatrix.shape[0]):
     if row_sum != 0:
         percentage_matrix[i] = (selectedMatrix[i] / row_sum) * 100  # Normalize by row sum
 
-# Plotting the heatmap
+# Plotting the heatmap without formatting the annotations
 plt.figure(figsize=(10, 6), dpi=300)
 
 ax = sns.heatmap(
@@ -60,15 +60,22 @@ ax = sns.heatmap(
     cbar=True,
     xticklabels=col_labels,
     yticklabels=row_labels,
-    annot=True,  # Annotate with percentages
-    fmt='.1f',  # Format annotations as percentages with one decimal place
-    annot_kws={'size': 10, 'weight': 'bold', 'color': 'black'}
+    annot=False  # Set annot=False to avoid internal formatting issues
 )
 
-# Customize the color bar
+# Manually annotate the cells with formatted percentages
+for i in range(percentage_matrix.shape[0]):
+    for j in range(percentage_matrix.shape[1]):
+        ax.text(
+            j + 0.5, i + 0.5,  # Position the text (adjust for centering)
+            f"{percentage_matrix[i, j]:.1f}%",  # Format the value with the "%" sign
+            ha='center', va='center',  # Align the text in the center
+            color='black', fontsize=10, weight='bold'  # Text formatting
+        )
+
+# Customize the color bar to show only 0 and 100
 colorbar = ax.collections[0].colorbar
-colorbar.locator = ticker.MaxNLocator(integer=True)
-colorbar.update_ticks()
+colorbar.set_ticks([0, 100])  # Set only 0 and 100 ticks on the color bar
 
 # Title and axis labels
 plt.title('Pre-Augmented Confusion Matrix (Test) - Normalized by Row')
@@ -79,5 +86,5 @@ plt.ylabel('True Label')
 plt.tight_layout()
 
 # Show and save the plot
-plt.savefig("pre-aug-conf-test-normalized.png", bbox_inches='tight')
+plt.savefig("pre-aug-conf-test-normalized-with-manual-annotation.png", bbox_inches='tight')
 plt.show()
