@@ -97,7 +97,7 @@ for title, selectedMatrix in matrices.items():
     ax.xaxis.label.set_position((0.5, 1.1))  # Position the xlabel above the x-axis labels
 
     # Title and axis labels
-    plt.title(f'{title} - Normalized by Row')
+    plt.title(f'Classification Matrix - {title}')
     plt.ylabel('True Label')
 
     # Adjust layout for tight fit
