@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -77,14 +78,28 @@ for i in range(percentage_matrix.shape[0]):
 colorbar = ax.collections[0].colorbar
 colorbar.set_ticks([0, 100])  # Set only 0 and 100 ticks on the color bar
 
+#TODO: Set x-axis label (Predicted Label) above the x-axis labels
+ax.set_xlabel('Predicted Label', labelpad=20)  # Add xlabel with padding to position it higher
+ax.xaxis.label.set_position((0.5, 1.1))  # Position the xlabel above the x-axis labels
+
+# Move x-axis labels to the top and ensure they are visible
+ax.xaxis.set_ticks_position('top')
+ax.xaxis.set_tick_params(labeltop=True, labelbottom=False)  # Remove labels at the bottom
+
 # Title and axis labels
 plt.title('Pre-Augmented Confusion Matrix (Test) - Normalized by Row')
-plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 
 # Adjust layout for tight fit
 plt.tight_layout()
 
+# Define the path and ensure the directory exists (use relative path for current directory)
+save_path = './plots/pre_aug_conf_matrix.png'  # Save in the current directory under 'plots'
+os.makedirs(os.path.dirname(save_path), exist_ok=True)  # Create the directory if it doesn't exist
+
 # Show and save the plot
-plt.savefig("pre-aug-conf-test-normalized-with-manual-annotation.png", bbox_inches='tight')
+plt.savefig(save_path, bbox_inches='tight')
 plt.show()
+
+# Inform the user where the plot was saved
+print(f"Plot saved to: {save_path}")
