@@ -67,7 +67,7 @@ for title, selectedMatrix in matrices.items():
     # Create the heatmap without 'fmt' or 'annot_kws'
     ax = sns.heatmap(
         percentage_matrix, 
-        cmap='YlOrRd',
+        cmap='YlGn',
         cbar=True,
         xticklabels=col_labels,
         yticklabels=row_labels,
