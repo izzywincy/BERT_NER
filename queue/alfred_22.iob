@@ -1647,6 +1647,12 @@ affirmative	O
 Section	O
 9	O
 ,	O
+Article	B-CNS
+III	I-CNS
+of	I-CNS
+the	I-CNS
+1987	I-CNS
+Constitution	I-CNS
 provides	O
 that	O
 "	O
@@ -2280,6 +2286,14 @@ to	O
 Section	O
 9	O
 ,	O
+Article	B-CNS
+[	I-CNS
+III	I-CNS
+]	I-CNS
+of	I-CNS
+the	I-CNS
+1987	I-CNS
+Constitution	I-CNS
 which	O
 mandates	O
 that	O
