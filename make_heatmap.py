@@ -51,7 +51,15 @@ cns_pre_augmented_train_eval  = np.array([
     [119, 0, 1, 0, 0, 10, 6727, 130],
 ])
 
-#cns_pre_augmented_test
+cns_pre_augmented_test = np.array([
+    [296, 0, 0, 0, 0, 2, 15, 17],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 59, 0, 0, 10, 0, 10],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 56, 0, 0, 0],
+    [5, 0, 0, 0, 0, 276, 3, 8],
+    [5, 0, 0, 0, 0, 0, 453, 5],
+])
 
 cns_post_augmented_train_eval = np.array([
     [876, 0, 17, 0, 0, 4, 56, 77],
