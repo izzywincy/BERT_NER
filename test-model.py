@@ -133,7 +133,7 @@ print("\n🔹 Overall Classification Report:")
 print(classification_report(all_true_labels, all_pred_labels, digits=4))
 
 # 🔹 7×7 Entity-Level Confusion Matrix
-ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_TYPES = ['INS', 'CNS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
 ENTITY_INDEX = {e: i for i, e in enumerate(ENTITY_TYPES)}
 
 def strip_prefix(label):
