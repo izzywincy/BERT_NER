@@ -41,16 +41,40 @@ post_augmented_test = np.array([
     [12, 1, 0, 0, 6, 1379, 19]
 ])
 
-# Example matrices stored in a dictionary
+cns_pre_augmented_train_eval  = np.array([
+    [3067, 0, 27, 3, 0, 23, 213, 266],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [13, 0, 392, 2, 0, 36, 10, 61],
+    [13, 0, 56, 176, 0, 0, 0, 69],
+    [0, 0, 0, 0, 391, 0, 3, 3],
+    [21, 0, 3, 11, 0, 2954, 15, 50],
+    [119, 0, 1, 0, 0, 10, 6727, 130],
+])
+
+#cns_pre_augmented_test
+
+cns_post_augmented_train_eval = np.array([
+    [876, 0, 17, 0, 0, 4, 56, 77],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 0, 86, 0, 0, 5, 0, 6],
+    [4, 0, 11, 54, 0, 1, 0, 16],
+    [0, 0, 0, 0, 115, 0, 0, 0],
+    [3, 0, 0, 0, 0, 613, 0, 3],
+    [54, 0, 0, 0, 0, 0, 1679, 54],
+])
+
+#cns_post_augmented_test
+    
+
 matrices = {
-    'Pre-Augmented (Train-Eval)': pre_augmented_train_eval,
-    'Pre-Augmented (Test)': pre_augmented_test,
-    'Post-Augmented (Train-Eval)': post_augmented_train_eval,
-    'Post-Augmented (Test)': post_augmented_test
+    'Pre-Augmented w/o CNS (Train-Eval)': pre_augmented_train_eval,
+    'Pre-Augmented w/o CNS (Test)': pre_augmented_test,
+    'Post-Augmented w/o CNS (Train-Eval)': post_augmented_train_eval,
+    'Post-Augmented w/o CNS (Test)': post_augmented_test
 }
 
-col_labels = ["INS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON", "Missed"]
-row_labels = ["INS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON"]
+col_labels = ["INS", "CNS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON", "Missed"]
+row_labels = ["INS", "CNS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON"]
 
 # Loop through each matrix in the dictionary
 for title, selectedMatrix in matrices.items():
