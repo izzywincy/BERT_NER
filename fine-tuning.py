@@ -104,14 +104,15 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 LABEL_MAP = {
     "O": 0, 
     "B-INS": 1, "I-INS": 2, 
-    "B-STA": 3, "I-STA": 4, 
-    "B-RA": 5, "I-RA": 6, 
-    "B-PROM_DATE": 7, "I-PROM_DATE": 8,
-    "B-CASE_NUM": 9, "I-CASE_NUM": 10, "B-PERSON": 11, "I-PERSON": 12
+    "B-CNS": 3, "I-CNS": 4,
+    "B-STA": 5, "I-STA": 6, 
+    "B-RA": 7, "I-RA": 8, 
+    "B-PROM_DATE": 9, "I-PROM_DATE": 10,
+    "B-CASE_NUM": 11, "I-CASE_NUM": 12, "B-PERSON": 13, "I-PERSON": 14
 }
 
 # Only 7 entity types (excluding 'O')
-ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_TYPES = ['INS', 'CNS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
 ENTITY_INDEX = {name: i for i, name in enumerate(ENTITY_TYPES)}
 
 id2label = {v: k for k, v in LABEL_MAP.items()}
@@ -225,7 +226,7 @@ tokenizer.save_pretrained("./bert-legal-ner")
 from sklearn.metrics import confusion_matrix
 import pandas as pd
 
-ENTITY_TYPES = ['INS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
+ENTITY_TYPES = ['INS', 'CNS', 'STA', 'RA', 'PROM_DATE', 'CASE_NUM', 'PERSON']
 ENTITY_INDEX = {name: i for i, name in enumerate(ENTITY_TYPES)}
 
 flat_true = []

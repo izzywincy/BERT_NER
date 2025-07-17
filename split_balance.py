@@ -48,20 +48,8 @@ def split_files(files_counts, ratios):
         'test': total_files - int(ratios['train'] * total_files) - int(ratios['eval'] * total_files)
     }
 
-    # ✅ Separate CNS-tagged files
-    cns_files = [(f, c) for f, c in files_counts if c['constitutes'] > 0]
-    non_cns_files = [(f, c) for f, c in files_counts if c['constitutes'] == 0]
-
-    # ✅ Put 90% of CNS files in train, 10% in eval
-    cns_train_count = int(0.9 * len(cns_files))
-    for i, (filename, counts) in enumerate(cns_files):
-        split = 'train' if i < cns_train_count else 'eval'
-        split_files[split].append(filename)
-        for k in ENTITY_KEYS:
-            split_counts[split][k] += counts[k]
-
     # 🔄 Distribute remaining files with balance logic
-    for filename, counts in non_cns_files:
+    for filename, counts in files_counts:
         best_split = None
         min_entity_sum = float('inf')
 
