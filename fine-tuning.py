@@ -153,9 +153,6 @@ def tokenize_and_align_labels(examples):
     tokenized_inputs["labels"] = labels
     return tokenized_inputs
 # Debug
-if not train_tokens:
-    print("❌ No training tokens loaded. Check file paths or data parsing.")
-    exit()
 print("\n📝 Sentence:", " ".join(train_tokens[0]))
 tokenized_output = tokenizer(train_tokens[0], is_split_into_words=True)
 tokens = tokenizer.convert_ids_to_tokens(tokenized_output["input_ids"])
