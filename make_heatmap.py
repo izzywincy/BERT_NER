@@ -2,9 +2,10 @@ import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from scipy.ndimage import zoom
+from matplotlib.colors import Normalize
+import matplotlib.cm as cm
 
+# Define all matrices
 pre_augmented_train_eval = np.array([
     [885, 16, 0, 0, 4, 46, 66],
     [2, 88, 0, 0, 5, 0, 7],
@@ -41,39 +42,7 @@ post_augmented_test = np.array([
     [12, 1, 0, 0, 6, 1379, 19]
 ])
 
-cns_pre_augmented_train_eval  = np.array([
-    [3067, 0, 27, 3, 0, 23, 213, 266],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [13, 0, 392, 2, 0, 36, 10, 61],
-    [13, 0, 56, 176, 0, 0, 0, 69],
-    [0, 0, 0, 0, 391, 0, 3, 3],
-    [21, 0, 3, 11, 0, 2954, 15, 50],
-    [119, 0, 1, 0, 0, 10, 6727, 130],
-])
-
-cns_pre_augmented_test = np.array([
-    [296, 0, 0, 0, 0, 2, 15, 17],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 59, 0, 0, 10, 0, 10],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 56, 0, 0, 0],
-    [5, 0, 0, 0, 0, 276, 3, 8],
-    [5, 0, 0, 0, 0, 0, 453, 5],
-])
-
-cns_post_augmented_train_eval = np.array([
-    [876, 0, 17, 0, 0, 4, 56, 77],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [1, 0, 86, 0, 0, 5, 0, 6],
-    [4, 0, 11, 54, 0, 1, 0, 16],
-    [0, 0, 0, 0, 115, 0, 0, 0],
-    [3, 0, 0, 0, 0, 613, 0, 3],
-    [54, 0, 0, 0, 0, 0, 1679, 54],
-])
-
-#cns_post_augmented_test
-    
-
+# Store all matrices with their labels
 matrices = {
     'Pre-Augmented w/o CNS (Train-Eval)': pre_augmented_train_eval,
     'Pre-Augmented w/o CNS (Test)': pre_augmented_test,
@@ -81,67 +50,67 @@ matrices = {
     'Post-Augmented w/o CNS (Test)': post_augmented_test
 }
 
+# Define labels
 col_labels = ["INS", "CNS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON", "Missed"]
 row_labels = ["INS", "CNS", "STA", "RA", "PROM_DATE", "CASE_NUM", "PERSON"]
 
-# Loop through each matrix in the dictionary
+# Process and plot each matrix
 for title, selectedMatrix in matrices.items():
-    # Compute percentage matrix (normalized by row sum)
+    # Normalize by row to get percentage matrix
     percentage_matrix = np.zeros_like(selectedMatrix, dtype=np.float64)
     for i in range(selectedMatrix.shape[0]):
         row_sum = selectedMatrix[i].sum()
         if row_sum != 0:
-            percentage_matrix[i] = (selectedMatrix[i] / row_sum) * 100  # Normalize by row sum
+            percentage_matrix[i] = (selectedMatrix[i] / row_sum) * 100
 
-    # Plotting the heatmap without formatting the annotations
+    # Plot setup
     plt.figure(figsize=(10, 6), dpi=300)
+    cmap = plt.get_cmap('YlGn')
+    norm = Normalize(vmin=percentage_matrix.min(), vmax=percentage_matrix.max())
 
-    # Create the heatmap without 'fmt' or 'annot_kws'
     ax = sns.heatmap(
-        percentage_matrix, 
-        cmap='YlGn',
+        percentage_matrix,
+        cmap=cmap,
         cbar=True,
         xticklabels=col_labels,
         yticklabels=row_labels,
-        annot=False  # Set annot=False to avoid internal formatting issues
+        annot=False
     )
 
-    # Manually annotate the cells with formatted percentages
+    # Annotate each cell with dynamic text color
     for i in range(percentage_matrix.shape[0]):
         for j in range(percentage_matrix.shape[1]):
+            value = percentage_matrix[i, j]
+            rgba = cmap(norm(value))
+            r, g, b, _ = rgba
+            brightness = 0.299 * r + 0.587 * g + 0.114 * b
+            text_color = 'white' if brightness < 0.5 else 'black'
+
             ax.text(
-                j + 0.5, i + 0.5,  # Position the text (adjust for centering)
-                f"{percentage_matrix[i, j]:.1f}%",  # Format the value with the "%" sign
-                ha='center', va='center',  # Align the text in the center
-                color='black', fontsize=10, weight='bold'  # Text formatting
+                j + 0.5, i + 0.5,
+                f"{value:.1f}%",
+                ha='center', va='center',
+                color=text_color,
+                fontsize=10,
+                weight='bold'
             )
 
-    # Customize the color bar to show only 0 and 100
+    # Colorbar customization
     colorbar = ax.collections[0].colorbar
-    colorbar.set_ticks([0, 100])  # Set only 0 and 100 ticks on the color bar
+    colorbar.set_ticks([0, 100])
 
-    # Move x-axis labels to the top and ensure they are visible
+    # Move x-axis labels to top
     ax.xaxis.set_ticks_position('top')
-    ax.xaxis.set_tick_params(labeltop=True, labelbottom=False)  # Remove labels at the bottom
-
-    # Set x-axis label (Predicted Label) above the x-axis labels
-    ax.set_xlabel('Predicted Label', labelpad=20)  # Add xlabel with padding to position it higher
-    ax.xaxis.label.set_position((0.5, 1.1))  # Position the xlabel above the x-axis labels
-
-    # Title and axis labels
+    ax.xaxis.set_tick_params(labeltop=True, labelbottom=False)
+    ax.set_xlabel('Predicted Label', labelpad=20)
+    ax.xaxis.label.set_position((0.5, 1.1))
     plt.title(f'Classification Matrix - {title}')
     plt.ylabel('True Label')
 
-    # Adjust layout for tight fit
+    # Layout and saving
     plt.tight_layout()
-
-    # Define the path and ensure the directory exists (use relative path for current directory)
-    save_path = f'./plots/{title.replace(" ", "_").lower()}_matrix.png'  # Save with dynamic name
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)  # Create the directory if it doesn't exist
-
-    # Show and save the plot
+    save_path = f'./plots/{title.replace(" ", "_").lower()}_matrix.png'
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path, bbox_inches='tight')
     plt.show()
-
-    # Inform the user where the plot was saved
     print(f"Plot for {title} saved to: {save_path}")
